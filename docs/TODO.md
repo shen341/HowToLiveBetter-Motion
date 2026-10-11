@@ -10,7 +10,7 @@
 [Milestone 1] 核心基建与数据抽取   [████████████████████] 100% (已完成)
 [Milestone 2] 多模态资产与影视级组装 [████████████████████] 100% (已完成)
 [Milestone 3] 语音解说与智能选风     [████████████████████] 100% (已完成)
-[Milestone 4] 批量生产、质检与平台化 [████████████░░░░░░░░]  60% (当前重点)
+[Milestone 4] 批量生产、质检与平台化 [██████████░░░░░░░░░░]  50% (当前进行中)
 [Milestone 5] 人工审核工作台与发布辅助 [░░░░░░░░░░░░░░░░░░░░]   0% (未来规划)
 ```
 
@@ -30,6 +30,7 @@
   * 上部黄金分割点（$Y \approx 733\text{px}$）：核心浮现大字徽章（Kinetic Typography）。
   * 下部黄金分割点（$Y \approx 1186\text{px}$）：深色磨砂半透明胶囊字幕，彻底避开抖音/小红书底部交互 UI。
 - [x] **Ken Burns 连续运镜与 0.5s 交叉溶解**：平滑镜头推拉与叠化转场。
+- [x] **黄金 6 幕叙事脉冲曲线升级**：告别单张图长停 8 秒的呆滞感，全片 6 幕紧凑剪辑（单镜头 4.0~5.2s），形成 6 阶段完整论证闭环，总时长 28~32s（[ADR-008](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-008-Golden-6-Scenes-Narrative-Pulse-Rhythm.md)）。
 
 ### Milestone 3: 语音解说与智能自主选风 (Phase 3)
 - [x] **Cloudflare Edge-TTS 接入**：集成 `"zh-CN-YunzeNeural"` 男声解说，沉稳公信力（`src/tts_client.py`）。

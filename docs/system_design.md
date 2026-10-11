@@ -27,26 +27,29 @@ flowchart TD
         B3 --> B4["生成结构化分镜 JSON (标题 / 30s旁白 / 浮现词 / 画面Prompt)"]
     end
 
-    subgraph Media_Generation ["3. 多模态视觉生成 (muse-image / muse-video)"]
-        B4 --> C1["解析分镜中的画面 Prompt"]
-        C1 --> C2["调用 muse-image (高精关键帧) 或 muse-video (动态切片)"]
-        C2 --> C3["原始多模态素材落盘 (output/raw_assets/{id}/)"]
-        C3 --> C4["更新状态 -> Media_Generated"]
+    subgraph Media_Generation ["3. 多模态生成与字幕首图 (muse-image / Edge-TTS / Pillow)"]
+        B4 --> C1["解析分镜中的画面 Prompt 与口播文案"]
+        C1 --> C2["调用 muse-image 生成 1024x1792 高清原画 (scene_01~06.png)"]
+        C1 --> C3["调用 Edge-TTS 生成解说音频 (voice_01~06.mp3)"]
+        C2 & C3 --> C4["CoverGenerator 渲染 1080x1920 封面卡片 (cover.png)"]
+        C2 & C3 --> C5["SRTGenerator 计算绝对时间轴导出 (subtitles.srt)"]
+        C4 & C5 --> C6["原始素材落盘归档 (output/raw_assets/{id}/)"]
+        C6 --> C7["更新状态 -> Media_Generated"]
     end
 
-    subgraph Video_Assembly ["4. 音视频装配与渲染 (03_video_assembler.py)"]
-        C4 --> D1["读取素材与分镜时间轴"]
-        D1 --> D2["运镜渲染 (Camera Track: 快推/微移/砸入)"]
-        D1 --> D3["动态关键字与字幕生成 (Pillow + MoviePy/FFmpeg)"]
-        D1 --> D4["音频编排 (TTS 旁白 + assets/bgm/ 自动淡入淡出混音)"]
-        D2 & D3 & D4 --> D5["合成渲染 1080x1920 MP4"]
-        D5 --> D6["保存至 output/final_videos/{id}.mp4"]
+    subgraph Video_Assembly ["4. 音视频装配与渲染交付 (03_video_assembler.py)"]
+        C7 --> D1["读取素材与分镜时间轴"]
+        D1 --> D2["黄金 6 幕运镜渲染 (Ken Burns: 快推/微移/砸入 + 0.5s交叉溶解)"]
+        D1 --> D3["动态大字与胶囊字幕渲染 (Pillow + MoviePy)"]
+        D1 --> D4["双轨混音编排 (TTS 旁白 + backgroup_music/ 弱音 0.09 混音)"]
+        D2 & D3 & D4 --> D5["合成渲染 1080x1920 MP4 成片"]
+        D5 --> D6["同步发布交付三件套至 output/final_videos/:\n- {id}_{title}.mp4 (成片视频)\n- {id}_{title}.srt (独立外挂字幕)\n- {id}_{title}_cover.png (发布高清首图)"]
         D6 --> D7["更新状态 -> Completed"]
     end
 
     subgraph Audit_Publish ["5. 人工复核与分发"]
-        D7 --> E1["创作者预览与审核"]
-        E1 --> E2["发布至 小红书 / 视频号 / 抖音"]
+        D7 --> E1["创作者预览与剪映/CapCut 微调"]
+        E1 --> E2["一键发布至 小红书 / 视频号 / 抖音 / B站"]
     end
 ```
 
@@ -195,9 +198,15 @@ CREATE INDEX IF NOT EXISTS idx_entries_chapter ON entries(chapter_index);
 2. **必须有“具体的物与动作” (Physical Object & Action Driven)**：
    - 坚决杜绝抽象概念（如讲“防骗”不能画个发光盾牌，要画“手机银行界面上的一张可疑二维码”或“盖着红印章的虚假公文”）。
    - 每一个镜头必须有明确的名词（主物）与动词（动作）。
-3. **脉冲式节奏与镜头事件 (Pulse Motion Rhythm)**：
-   - 杜绝传统幻灯片“匀速慢推 5 秒”的催眠感。短视频的核心是：**停住（定点阐述） -> 0.28秒快推/砸入（重音事件） -> 停住（消化信息）**。
-   - 每一镜时长控制在 3~7 秒，全片总时长控制在 25~30 秒。
+3. **黄金六幕脉冲式叙事节奏 (Golden Multi-Scene Pulse Motion Rhythm)**：
+   - 彻底打破单张静态画面悬停 7~9 秒的呆滞幻灯片感。全片严格规划 **6 个紧凑分镜**（单镜时长约 **4.0 ~ 5.2 秒**，全片总时长控制在 **28 ~ 32 秒** 最佳推荐区间）：
+     * 第 1 镜 (0-4.5s 痛点抓眼钩子)：生活场景具体物动作 + 抛出反直觉痛点（口播 12~18 字）。
+     * 第 2 镜 (4.5-9.5s 认知误区颠覆)：生活全貌展开，指出常见认知误区与真相（口播 15~20 字）。
+     * 第 3 镜 (9.5-14.5s 隐形机理危害)：底层机理拆解，关键指标震撼对比（口播 15~20 字）。
+     * 第 4 镜 (14.5-19.5s 权威证据背书)：国家规章 / WHO / 权威文献数据标签展示（口播 15~20 字）。
+     * 第 5 镜 (19.5-24.5s 极低成本行动)：具体手部微动作或零成本实施步骤（口播 15~20 字）。
+     * 第 6 镜 (24.5-29.5s 核心金句定格)：明亮开阔未来生活场景，核心行动金句收尾（口播 10~15 字）。
+   - 视觉核心节奏：**停住（定点阐述） ➔ 0.28秒快推/砸入（重音事件） ➔ 0.5s 平滑交叉溶解切换下一幕**。
 4. **解说语法契合内容类型**：
    - **意外与生死安全类**（如系安全带、戴头盔、防一氧化碳）：采用 **Kurzgesagt 扁平明快科普** 或 **吉卜力写实手绘风格**，亲切生活化，具象呈现。
    - **制度/法律/骗局类**（如劳务合同、借贷担保、兼职诈骗）：采用 **Vox 调查剪报风格** 或 **利希滕斯坦波普风格**，高对比、真实凭据感。
@@ -277,36 +286,55 @@ photorealistic motion physics, clean frame transition, consistent art style
 
 ```
 HowToLiveBetter-Motion/
-├── .env.example               # 环境变量配置模板 (MUSE_API_KEY, BASE_URL)
-├── .gitignore                 # Git 忽略配置 (忽略虚拟环境, raw_assets, mp4等)
-├── README.md                  # 项目总说明与运行指南
+├── .env                       # 真实环境配置 (MUSE_API_KEY, TTS 端点等)
+├── .env.example               # 环境变量配置模板
+├── .gitignore                 # Git 忽略配置
+├── README.md                  # 项目总说明与运行导航中心
 ├── requirements.txt           # Python 依赖清单
 ├── pipeline.db                # SQLite 状态数据库 (本地自动生成)
-├── progress.json              # 进度快照与人类可读状态
+├── progress.json              # 全局进度快照 (人类可读状态)
 │
-├── docs/                      # 设计与规范文档
-│   └── system_design.md       # [本系统设计文档]
+├── docs/                      # 架构与运维文档中心
+│   ├── system_design.md       # [本系统设计文档]
+│   ├── OPERATIONS_MANUAL.md   # 全流程操作手册 (SOP)
+│   ├── TODO.md                # 待办任务清单与里程碑规划
+│   └── decisions/             # ADR 架构决策记录目录
+│       ├── ADR-001 ~ ADR-009  # 历次关键技术决策记录
+│       └── README.md          # ADR 索引与规范
 │
+├── backgroup_music/           # 自定义背景音乐轻音乐库 (01~03 mp3)
 ├── assets/                    # 本地静态资产库
-│   ├── bgm/                   # 预设轻音乐与背景音 (mp3/wav)
-│   └── fonts/                 # 开源中文字体 (如思源黑体, 演示悠然体等)
+│   ├── bgm/                   # 预设备用轻音乐
+│   └── fonts/                 # 开源中文字体
 │
 ├── src/                       # 核心业务模块
 │   ├── __init__.py
 │   ├── config.py              # 配置加载与环境变量解析 (os.getenv)
 │   ├── db.py                  # 数据库初始化、CRUD 与 progress.json 同步
 │   ├── extractor.py           # Markdown 提取与正则解析器
-│   ├── prompt_builder.py      # huashu 风格到 Muse Prompt 编译器
-│   ├── muse_client.py         # OpenAI 规范 Muse API 客户端包装
-│   └── assembler.py           # FFmpeg / MoviePy 视频合成与排版器
+│   ├── prompt_builder.py      # huashu 风格卡与黄金 6 幕 Prompt 编译器
+│   ├── muse_client.py         # OpenAI 规范 Muse AI API 客户端包装
+│   ├── tts_client.py          # Cloudflare Edge-TTS 客户端 (YunzeNeural)
+│   ├── cover_generator.py     # 1080x1920 竖屏专属封面卡片生成引擎
+│   ├── srt_generator.py       # 独立外挂 SRT 字幕生成与时间轴对齐引擎
+│   └── assembler.py           # Ken Burns 运镜、转场与双轨混音装配器
 │
 ├── 01_data_extractor.py       # 执行脚本：拉取/解析书籍并初始化数据库
-├── 02_ai_generator.py         # 执行脚本：大模型分镜生成与多模态资产调用
-├── 03_video_assembler.py      # 执行脚本：音视频与字幕全自动合成导出
+├── 02_ai_generator.py         # 执行脚本：大模型分镜生成、生图、TTS与字幕封面
+├── 03_video_assembler.py      # 执行脚本：音视频全自动合成导出与三件套交付
 │
-└── output/                    # 产物输出目录
-    ├── raw_assets/            # 各条目的原始图片与视频片段 (按 entry_id 分组)
-    └── final_videos/          # 最终交付的 1080x1920 MP4 成片
+└── output/                    # 产物交付目录
+    ├── raw_assets/            # 各条目素材包 (output/raw_assets/{entry_id}/)
+    │   ├── storyboard.json    # 分镜结构化 JSON 脚本
+    │   ├── cover.png          # 1080x1920 专属封面卡片
+    │   ├── subtitles.srt      # 独立分镜 SRT 字幕
+    │   ├── scene_01~06.png    # 1024x1792 高清原画
+    │   └── voice_01~06.mp3    # 各分镜口播音频
+    │
+    └── final_videos/          # 最终交付三件套 (output/final_videos/)
+        ├── {clean_name}.mp4   # 1080x1920 竖屏最终成片 (28~32s)
+        ├── {clean_name}.srt   # 同名独立外挂字幕 (剪映/播放器自动识别)
+        └── {clean_name}_cover.png # 1080x1920 高清发布首图
 ```
 
 ---
@@ -318,7 +346,10 @@ HowToLiveBetter-Motion/
 - [x] **Step 2 数据抽取与状态持久化 (已完成)**：编写 `01_data_extractor.py`、`src/extractor.py` 与 `src/db.py`，完整解析 34 章节 677 条目入库 SQLite 与 `progress.json`。
 - [x] **Step 3 多模态生成与 TTS 语音讲解 (已完成)**：编写 `02_ai_generator.py`、`src/muse_client.py` 与 `src/tts_client.py`，打通 Muse AI 真实接口与 Cloudflare Edge-TTS，实现「以声定景」动态时长对齐。
 - [x] **Step 4 音视频编排与后期合成 (已完成)**：编写 `03_video_assembler.py` 与 `src/assembler.py`，实现 Ken Burns 运镜、0.5s 交叉溶解、上下黄金分割点文字卡片与 `backgroup_music/` 弱音混音。
-- [x] **Step 5 AI 语义理解自主选风升级 (已完成)**：实现 7 大艺术风格卡配方库与大模型自主决策机制，支持 `--style auto/chapter/<id>` 灵活切换。
+- [x] **Step 5 AI 语义理解自主选风升级 (已完成)**：实现 7 大艺术风格卡配方库与大模型自主决策机制，支持 `--style auto/chapter/<id>` 灵活切换（[ADR-006](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-006-Autonomous-Visual-Style-Selection.md)）。
+- [x] **Step 6 短视频专属封面卡片引擎 (已完成)**：实现 `src/cover_generator.py`，全自动输出 1080×1920 高辨识度静态首图，提升发布点击率（[ADR-007](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-007-Cover-Card-Generation-Architecture.md)）。
+- [x] **Step 7 黄金 6 幕叙事脉冲曲线升级 (已完成)**：分镜从 4 幕升级为 6 幕，单镜头时长缩短至 4.0~5.2 秒，消除长镜头呆滞感，全片 28~32 秒黄金节奏（[ADR-008](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-008-Golden-6-Scenes-Narrative-Pulse-Rhythm.md)）。
+- [x] **Step 8 独立外挂 SRT 字幕导出引擎 (已完成)**：实现 `src/srt_generator.py`，精确镜像转场叠加时间轴，实现同名 `.srt` 软硬字幕统一与剪映一键导入二次精修（[ADR-009](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-009-Standalone-SRT-Subtitle-Architecture.md)）。
 
 详细架构决策推演请查阅 [docs/decisions/ (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)；后续生产演进任务与迭代规划请查阅 [docs/TODO.md](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)。
 
@@ -367,8 +398,10 @@ TTS 音频时长 (T_audio) ───► 增加呼吸缓冲 (Δt = 0.4~0.6s) ─�
    其中 $\Delta t_{cushion} \approx 0.5\text{s}$ 作为句末呼吸气口，让观众在听完重要数据后有充分时间消化视听信息。
 2. **多幕平滑衔接**：
    每幕画面与语音轨绑定为独立复合子轨，在分镜切换处应用 $0.5\text{s}$ 的交叉溶解叠化（CrossFadeIn），语音与画面协同自然切入。
-3. **整体时长控制**：
-   4 幕解说总净时长约为 $\sum T_{scene}^{(i)} - 3 \times 0.5\text{s} \approx 25 \sim 29\text{s}$，完美契合短视频 30 秒黄金推荐时段。
+3. **黄金六幕整体时长控制**：
+   黄金六幕解说总净时长严格由叠化转场公式计算：
+   $$T_{total} = \sum_{i=1}^{6} T_{scene}^{(i)} - 5 \times 0.5\text{s} \approx 28.0 \sim 32.0\text{s}$$
+   完美契合抖音、小红书和视频号短视频 30 秒黄金完播与信息传递时段。
 
 ### 7.3 背景音乐 (BGM) 智能衰减与混音策略
 为彻底解决背景音乐喧宾夺主的问题，系统建立如下混音衰减规则：
@@ -380,3 +413,29 @@ TTS 音频时长 (T_audio) ───► 增加呼吸缓冲 (Δt = 0.4~0.6s) ─�
 3. **音乐动态包络 (Audio Envelope)**：
    * 起始处：**1.0 秒平滑淡入**（AudioFadeIn）。
    * 结尾处：**2.0 秒平滑淡出**（AudioFadeOut），避免骤停突兀。
+
+---
+
+## 8. 专属封面卡片与独立 SRT 外挂字幕交付架构
+
+为了满足自媒体创作者“直接发布”与“剪映二次微调”的双重场景需求，系统将交付物从单纯的 MP4 升级为**标准化发布交付三件套**：
+
+### 8.1 竖屏高辨识度专属封面卡片架构 (`src/cover_generator.py`)
+- **设计标准**：1080×1920 竖屏高辨识度，参考小红书/抖音高爆款科普封面。
+- **渲染层级**：
+  1. **背景层**：第一幕原画做暗角与径向渐变虚化，增强前景文字对比度；
+  2. **顶部品牌徽章**：专栏名《高性价比人生指南》与证据等级胶囊；
+  3. **黄金分割点超大 Hero 标题**：两行折叠、抗锯齿大字；
+  4. **痛点钩子文案**：直击日常认知盲区；
+  5. **三维硬核参数条**：权威等级、执行代价、核心收益（如“证据 A 级 / 0元2秒 / 致死率降50%”）；
+  6. **底部品牌收尾**：极简品质标语。
+- **产物位置**：`output/raw_assets/{id}/cover.png` 与 `output/final_videos/{clean_name}_cover.png`。
+
+### 8.2 独立外挂 SRT 字幕生成引擎 (`src/srt_generator.py`)
+- **绝对时间轴算法**：
+  - 结合首幕 0.10s 呼吸留白、后续幕 0.15s 自然入场以及 0.5s 交叉溶解叠化，计算与解说人声物理波形 100% 同步的起止时间戳；
+  - 格式遵循标准 UTF-8 SRT 规范（`HH:MM:SS,mmm` 毫秒级时间码）。
+- **双模式支持**：
+  - **分镜级（默认）**：1:1 精确同步画面文字；
+  - **断句级（`--split` / `--split-srt`）**：对长句按标点符号（`。`、`！`、`，`）基于字数权重自适应拆分，适合剪映逐句高亮跳字动画。
+- **产物位置**：`output/raw_assets/{id}/subtitles.srt` 与 `output/final_videos/{clean_name}.srt`（与 MP4 同名，播放器自动加载）。

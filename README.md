@@ -15,24 +15,30 @@
    - **上部黄金分割点（$Y \approx 733\text{px}$）**：核心浮现关键词/重音数字卡片（Kinetic Typography），琥珀金高亮徽章与浮现动效。
    - **下部黄金分割点（$Y \approx 1186\text{px}$）**：高级深色磨砂半透明胶囊字幕（Frosted Dark Glass），避开抖音/小红书底部评论与操作区遮挡。
    - **连续动态运镜与平滑转场**：集成 Ken Burns 镜头推拉/平移运镜与 0.5s 电影感交叉溶解（Cross-dissolve）叠化过渡。
-3. **OpenAI SDK 规范接入 Muse AI**：
-   - 使用 `muse-spark` 提炼 30 秒精炼口播与四幕紧凑分镜。
-   - 自动生成 9:16（1024×1792）高精艺术画作（`muse-image`）或动态切片。
+3. **OpenAI SDK 规范接入 Muse AI 与黄金 6 幕叙事脉冲**：
+   - 使用 `muse-spark` 规划黄金 6 幕脉冲式叙事曲线（痛点钩子 $\to$ 认知颠覆 $\to$ 危害机理 $\to$ 权威证据 $\to$ 极低成本 $\to$ 金句定格），单镜 4.0~5.2s 消除呆滞长镜头，全片 28~32s 黄金节奏。
+   - 自动生成 9:16（1024×1792）高精艺术原画（`muse-image`）或动态切片。
 4. **Cloudflare Edge-TTS 原生讲解与音画精准同步**：
    - 调用 Edge-TTS 云端服务，采用 **`"zh-CN-YunzeNeural"`**（云泽·男声解说，沉稳富有说服力）。
    - **以声定景（Audio-Driven Duration）**：分镜时长与下部黄金分割点文字展示自动对齐语音时长（语音时长 + 0.5s 舒适呼吸留白）。
 5. **自定义背景音乐（BGM）与微音量混音**：
    - 自动读取根目录 `backgroup_music/` 下的 MP3 音乐（内置 `01_country_music.mp3`, `02_NastelBom.mp3`, `03_AbsoluteSound.mp3` 等）。
    - 背景音乐音量精确压低至 **0.09（-20dB 舒适弱音）**，搭配 1.0s 淡入与 2.0s 淡出，**纯衬底、绝不抢戏或干扰人声解说**！
+6. **短视频专属高辨识度封面卡片引擎 (Cover Card Generator)**：
+   - 纯 Python Pillow 实现 1080×1920 竖屏封面生成引擎（`src/cover_generator.py`），解决直接截帧对比度低痛点。
+   - 包含超大加粗标题、痛点钩子、3 维度权威标签（证据等级/执行成本/收益），并自动规避 Emoji 乱码方块。
+7. **独立外挂 SRT 字幕导出引擎 (SRT Generator)**：
+   - 实现 `src/srt_generator.py`，精确镜像转场叠化时间轴，输出标准 UTF-8 毫秒级 `.srt` 字幕。
+   - 支持分镜级 1:1 精确对齐与断句级自适应比例切分，成片同名自动外挂，剪映一键导入二次精修。
 
 ---
 
 ## 📚 核心文档导航 (Documentation Hub)
 
-- 📖 **[运用手册与运维指南 (Operations Manual)](file:///c:/develop/HowToLiveBetter-Motion/docs/OPERATIONS_MANUAL.md)**：包含前置环境安装、SOP 操作命令、画风调度、BGM 定制、SQLite 运维及发布前质检清单。
-- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 6 项关键 ADR，详细阐述双轨状态、画风理念、Pillow 渲染、以声定景、弱音混音与 AI 自主选风的决策理由。
-- 📋 **[项目路线图与待办任务 (TODO & Roadmap)](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)**：记录已完成里程碑、近期高优先任务（封面卡片/SRT字幕/批量限流）及远期规划。
-- 📐 **[系统架构设计与技术选型 (System Design)](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md)**：包含数据 Schema、MoviePy 架构与提示词编译工程标准。
+- 📖 **[运用手册与运维指南 (Operations Manual)](file:///c:/develop/HowToLiveBetter-Motion/docs/OPERATIONS_MANUAL.md)**：包含前置环境安装、SOP 操作命令、画风调度、BGM 定制、SQLite 运维、剪映二次微调及发布前质检清单。
+- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 9 项关键 ADR（ADR-001 ~ ADR-009），详细阐述双轨状态、画风理念、Pillow 渲染、以声定景、弱音混音、AI 语义自主选风、专属封面生成、黄金 6 幕升级及独立 SRT 字幕架构。
+- 📋 **[项目路线图与待办任务 (TODO & Roadmap)](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)**：记录已完成里程碑、近期高优先任务及远期规划。
+- 📐 **[系统架构设计与技术选型 (System Design)](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md)**：包含数据 Schema、MoviePy 架构、提示词编译工程与交付三件套标准。
 
 ---
 
@@ -53,12 +59,10 @@ HowToLiveBetter-Motion/
 │   ├── system_design.md       # 系统架构设计、Schema 与技术选型文档
 │   └── decisions/             # [ADR 架构决策记录]
 │       ├── README.md          # ADR 索引与状态表
-│       ├── ADR-001-Dual-State-Persistence-SQLite-and-JSON.md
-│       ├── ADR-002-Huashu-Art-Motion-Style-Cards-and-Prompt-Engineering.md
-│       ├── ADR-003-MoviePy-and-Pillow-Video-Assembly-Architecture.md
-│       ├── ADR-004-Edge-TTS-Integration-and-Audio-Driven-Timing.md
-│       ├── ADR-005-Custom-BGM-Directory-and-Audibility-Mixing.md
-│       └── ADR-006-Autonomous-Visual-Style-Selection.md
+│       ├── ADR-001 ~ ADR-006  # 早期基础架构与自主选风决策
+│       ├── ADR-007-Cover-Card-Generation-Architecture.md
+│       ├── ADR-008-Golden-6-Scenes-Narrative-Pulse-Rhythm.md
+│       └── ADR-009-Standalone-SRT-Subtitle-Architecture.md
 │
 ├── backgroup_music/           # 自定义背景音乐库 (放入任意 .mp3 音乐)
 │   ├── 01_country_music.mp3
@@ -77,19 +81,20 @@ HowToLiveBetter-Motion/
 │   ├── prompt_builder.py      # huashu 风格美学与 Prompt 编译器
 │   ├── muse_client.py         # Muse AI API 客户端与离线模拟器
 │   ├── tts_client.py          # Cloudflare Edge-TTS 语音生成与时长测量
-│   ├── cover_generator.py     # [TASK-4.1] 1080x1920 竖屏高辨识度专属封面卡片生成器
+│   ├── cover_generator.py     # 1080x1920 竖屏专属封面卡片生成器
+│   ├── srt_generator.py       # 独立外挂 SRT 字幕生成与时间轴对齐引擎
 │   └── assembler.py           # MoviePy 运镜、转场、黄金分割字幕与混音引擎
 │
 ├── 01_data_extractor.py       # 步骤 1: 数据拉取、结构化抽取与状态入库
-├── 02_ai_generator.py         # 步骤 2: 大模型分镜规划、素材生成与 TTS 语音合成
-├── 03_video_assembler.py      # 步骤 3: 运镜转场与双轨混音全自动合成输出
+├── 02_ai_generator.py         # 步骤 2: 大模型分镜规划、素材生成、TTS语音、封面与字幕
+├── 03_video_assembler.py      # 步骤 3: 运镜转场与双轨混音全自动合成输出与交付三件套
 │
 ├── data/                      # 原始数据源
 │   └── HowToLiveBetter/       # 克隆的知识库仓库 (book/*.md)
 │
 └── output/                    # 产物输出目录
-    ├── raw_assets/            # 各条目分镜脚本、原画与语音 (output/raw_assets/{id}/)
-    └── final_videos/          # 最终交付的 1080x1920 MP4 成片
+    ├── raw_assets/            # 各条目素材包 (storyboard.json, cover.png, subtitles.srt, scene_01~06, voice_01~06)
+    └── final_videos/          # 最终交付三件套 ({id}.mp4 成片, {id}.srt 独立字幕, {id}_cover.png 发布首图)
 ```
 
 ---
@@ -167,42 +172,54 @@ python 01_data_extractor.py --force
 将建议条目结合 `huashu-art-motion` 风格卡，调用 `muse-spark` 生成分镜，调用 `muse-image` 生成艺术原画，并调用 TTS 服务合成 `zh-CN-YunzeNeural` 语音。**现已全面支持 AI 自主语义选风与自定义风格控制**：
 
 ```bash
-# 1. 默认模式：AI 根据内容语义与情绪基调自主决策最佳画风 (--style auto)
-python 02_ai_generator.py --entry-id 09_001
+# 1. 默认模式：AI 自主决策最佳画风 + 黄金 6 幕叙事脉冲 (--style auto --scenes 6)
+python 02_ai_generator.py --entry-id 01_003
 
 # 2. 章节统一模式：按所属章节统一画风系列 (--style chapter)
 python 02_ai_generator.py --entry-id 01_001 --style chapter
 
-# 3. 强制指定画风模式：手动测试对比特定艺术风格 (如 y2_vox, y1_kurzgesagt, 13_pop, 24_hopper, 25_ghibli, 17_ink, 14_pixel)
+# 3. 指定分镜幕数：支持 4/6/8 幕分镜（默认 6 幕黄金节奏）
+python 02_ai_generator.py --entry-id 01_001 --scenes 6
+
+# 4. 强制指定画风模式：手动测试对比特定艺术风格 (如 y2_vox, y1_kurzgesagt, 13_pop, 24_hopper, 25_ghibli, 17_ink, 14_pixel)
 python 02_ai_generator.py --entry-id 01_001 --style y2_vox --force
 
-# 4. 批量处理前 5 个待处理条目 (全自动智能选风)
+# 5. 批量处理前 5 个待处理条目 (全自动智能选风与素材生成)
 python 02_ai_generator.py --limit 5
 ```
 
 产物保存在：`output/raw_assets/{entry_id}/`
 - `storyboard.json`：包含选定艺术风格（`art_style_id`）、选风依据（`art_style_reason`）、分镜、Prompt、精确语音时长与动态同步时长
-- `scene_01.png` ~ `scene_04.png`：高清 9:16 分镜艺术原画
-- `voice_01.mp3` ~ `voice_04.mp3`：各分镜解说语音 MP3
+- `cover.png`：1080×1920 竖屏高辨识度专属封面卡片（大字标题、痛点钩子与 3 维度徽章）
+- `subtitles.srt`：独立标准 SRT 字幕文件（毫秒级精准对齐音频时间轴）
+- `scene_01.png` ~ `scene_06.png`：高清 9:16 分镜艺术原画 (1024×1792)
+- `voice_01.mp3` ~ `voice_06.mp3`：各分镜解说语音 MP3
 
 ---
 
-### 步骤 3：音视频全自动合成、运镜转场与配乐混音 (`03_video_assembler.py`)
+### 步骤 3：音视频全自动合成、运镜转场与交付三件套 (`03_video_assembler.py`)
 
-使用 `moviepy` 动态加载分镜与语音轨，添加 Ken Burns 运镜、0.5s 叠化转场、上下黄金分割点文字卡片，并混入 `backgroup_music/` 背景音乐：
+使用 `moviepy` 动态加载 6 幕分镜与语音轨，添加 Ken Burns 运镜、0.5s 叠化转场、上下黄金分割点文字卡片，混入 `backgroup_music/` 背景音乐，并自动同步交付三件套：
 
 ```bash
-# 合成指定条目的短视频 (例如 01_001)
-python 03_video_assembler.py --entry-id 01_001
+# 合成指定条目的短视频 (例如 01_003)
+python 03_video_assembler.py --entry-id 01_003
 
 # 批量合成所有已就绪的条目
 python 03_video_assembler.py --limit 5
 
 # 指定自定义 BGM
 python 03_video_assembler.py --entry-id 01_001 --bgm backgroup_music/01_country_music.mp3
+
+# 导出断句级细分 SRT 字幕（自适应标点符号比例切分，适合剪映逐句跳字）
+python 03_video_assembler.py --entry-id 01_001 --force --split-srt
 ```
 
-产物保存在：`output/final_videos/{entry_id}_{标题}.mp4`
+产物保存在：`output/final_videos/` 交付三件套：
+- `{clean_name}.mp4`：1080×1920 竖屏成片（约 28~32 秒，8~15MB）
+- `{clean_name}.srt`：同名独立外挂字幕（播放器与剪映自动关联）
+- `{clean_name}_cover.png`：配套发布首图封面卡片
+
 合成完成后，条目状态自动流转为 `Completed`。
 
 ---
