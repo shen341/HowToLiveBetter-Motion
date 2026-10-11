@@ -77,6 +77,7 @@ HowToLiveBetter-Motion/
 │   ├── prompt_builder.py      # huashu 风格美学与 Prompt 编译器
 │   ├── muse_client.py         # Muse AI API 客户端与离线模拟器
 │   ├── tts_client.py          # Cloudflare Edge-TTS 语音生成与时长测量
+│   ├── cover_generator.py     # [TASK-4.1] 1080x1920 竖屏高辨识度专属封面卡片生成器
 │   └── assembler.py           # MoviePy 运镜、转场、黄金分割字幕与混音引擎
 │
 ├── 01_data_extractor.py       # 步骤 1: 数据拉取、结构化抽取与状态入库

@@ -81,6 +81,30 @@ def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: st
         print(f"   • 文件大小: {file_size_mb:.2f} MB")
         print(f"   • 耗时: {elapsed:.1f} 秒")
 
+        # 确保配套的高清封面卡片存放在 final_videos 目录下，便于发布时直接作为首图取用
+        raw_cover = os.path.join(raw_assets_dir, "cover.png")
+        final_cover = os.path.join(OUTPUT_FINAL_VIDEOS_DIR, f"{clean_name}_cover.png")
+        if os.path.exists(raw_cover) and not os.path.exists(final_cover):
+            try:
+                import shutil
+                shutil.copy2(raw_cover, final_cover)
+                print(f"   • 同步发布首图: {final_cover}")
+            except Exception:
+                pass
+        elif not os.path.exists(final_cover):
+            try:
+                from src.cover_generator import CoverGenerator
+                first_img = os.path.join(raw_assets_dir, "scene_01.png") if os.path.exists(os.path.join(raw_assets_dir, "scene_01.png")) else None
+                CoverGenerator().generate_cover(
+                    entry=entry,
+                    background_image_path=first_img,
+                    output_path=final_cover,
+                    storyboard_data=storyboard
+                )
+                print(f"   • 补充生成发布首图: {final_cover}")
+            except Exception:
+                pass
+
         # 更新数据库状态为 Completed
         update_status(
             conn,

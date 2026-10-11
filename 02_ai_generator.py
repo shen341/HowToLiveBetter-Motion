@@ -27,6 +27,7 @@ from src.db import (
     list_entries,
     update_status,
 )
+from src.cover_generator import CoverGenerator
 from src.muse_client import MuseClient
 from src.tts_client import TTSClient
 
@@ -129,6 +130,21 @@ def process_entry(
         # 更新全局目标时长
         script_data["target_duration_sec"] = round(sum(s.get("duration_sec", 6.0) for s in scenes) - (len(scenes) - 1) * 0.5, 2)
         print(f"📊 全片总净时长 (含转场叠加): {script_data['target_duration_sec']} 秒")
+
+        # 2.3 自动生成 1080x1920 短视频高辨识度专属封面卡片 (TASK-4.1)
+        try:
+            print("   🖼️ 正在生成短视频专属 1080x1920 封面卡片 (Cover Card)...")
+            cover_gen = CoverGenerator()
+            first_scene_img = scenes[0].get("local_image_path") if scenes else None
+            cover_path = cover_gen.generate_cover(
+                entry=entry,
+                background_image_path=first_scene_img,
+                storyboard_data=script_data
+            )
+            script_data["cover_image_path"] = cover_path
+            print(f"      ✅ 封面卡片生成完成: {cover_path}")
+        except Exception as e:
+            print(f"      ⚠️ 封面卡片生成轻微异常 (不阻塞主流程): {e}")
 
         # 更新回写带本地素材路径的 storyboard.json
         with open(storyboard_path, "w", encoding="utf-8") as f:

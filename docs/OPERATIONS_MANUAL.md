@@ -105,15 +105,22 @@ python 02_ai_generator.py --entry-id 01_001 --mock --force
 ```
 
 - **输出产物**（存放于 `output/raw_assets/{entry_id}/`）：
+  - `cover.png`：[新增] 1080×1920 竖屏高辨识度专属封面卡片（小红书/抖音首选发布首图）。
   - `storyboard.json`：分镜脚本、Prompt、所选画风与选风理由、精准语音与分镜时长。
   - `scene_01.png` ~ `scene_04.png`：1024×1792 竖屏原画素材。
   - `voice_01.mp3` ~ `voice_04.mp3`：各分镜解说音频。
+
+> 💡 **独立重制封面卡片命令**：
+> 如需单独针对某一条目重新排版渲染封面图，可直接调用独立生成器：
+> ```powershell
+> python -m src.cover_generator --entry-id 01_001
+> ```
 
 ---
 
 ### 步骤 3：影视级视频组装与双轨混音 (`03_video_assembler.py`)
 
-本步骤将图片、运镜动效、转场溶解、黄金分割点文字卡片及 BGM 进行渲染，输出最终 MP4。
+本步骤将图片、运镜动效、转场溶解、黄金分割点文字卡片及 BGM 进行渲染，输出最终 MP4，并自动将发布首图同步复制至交付目录。
 
 ```powershell
 # 3.1 合成指定条目的最终成片
@@ -126,7 +133,10 @@ python 03_video_assembler.py --limit 5
 python 03_video_assembler.py --entry-id 01_001 --force
 ```
 
-- **输出产物**：`output/final_videos/{entry_id}_{章节名}之{小条目标题}.mp4`（1080×1920，约 25~30 秒，8~15MB）。
+- **输出产物**（存放于 `output/final_videos/`）：
+  - `{entry_id}_{章节名}之{小条目标题}.mp4`：1080×1920 竖屏成片（约 25~35 秒，8~15MB）。
+  - `{entry_id}_{章节名}之{小条目标题}_cover.png`：配套的高清专属发布首图。
+
 
 ---
 

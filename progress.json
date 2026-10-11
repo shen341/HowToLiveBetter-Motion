@@ -1,11 +1,11 @@
 {
-  "export_time": "2026-10-11T14:47:44.109169",
+  "export_time": "2026-10-11T21:24:46.089545",
   "total_entries": 677,
   "status_summary": {
-    "Completed": 1,
-    "Media_Generated": 1,
-    "Pending": 675,
+    "Completed": 3,
+    "Pending": 674,
     "Script_Generated": 0,
+    "Media_Generated": 0,
     "Video_Assembled": 0,
     "Failed": 0
   },
@@ -14,7 +14,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 1
+      "completed_items": 2
     },
     {
       "chapter_index": 2,
@@ -38,7 +38,7 @@
       "chapter_index": 5,
       "chapter_title": "不要浪费钱",
       "total_items": 46,
-      "completed_items": 0
+      "completed_items": 1
     },
     {
       "chapter_index": 6,
@@ -234,9 +234,9 @@
       "item_index": 2,
       "title": "骑摩托车、电动自行车戴头盔并扣好",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.730997"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_002_不要早死之骑摩托车、电动自行车戴头盔并扣好.mp4",
+      "updated_at": "2026-10-11T20:49:07.358713"
     },
     {
       "id": "01_003",
@@ -1653,9 +1653,9 @@
       "item_index": 1,
       "title": "关掉所有自动续费，改为到期手动续",
       "evidence_grade": "C",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T14:47:44.094868"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\05_001_不要浪费钱之关掉所有自动续费，改为到期手动续.mp4",
+      "updated_at": "2026-10-11T21:24:46.071015"
     },
     {
       "id": "05_002",
