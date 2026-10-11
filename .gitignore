@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Data and assets
+output/raw_assets/
+output/final_videos/
+data/HowToLiveBetter/.git/
+
+# SQLite databases & temp files
+*.tmp
+*.log

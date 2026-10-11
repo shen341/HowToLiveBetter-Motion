@@ -1,0 +1,369 @@
+# 「高性价比人生指南」全自动短视频生成流水线系统设计文档
+*(HowToLiveBetter-Motion Architecture & System Design)*
+
+---
+
+## 1. 系统概述与整体架构
+
+### 1.1 项目背景与目标
+本项目旨在打造一套工业级、端到端的全自动短视频内容生成流水线：
+- **数据源**：源自开源知识库 [`HowToLiveBetter`](https://github.com/eternity4719/HowToLiveBetter)（收录 677 条严谨论证、高性价比的人生行动指南，包含成本、收益、说人话、证据等级等结构化信息）。
+- **美学与叙事风格**：深度融入 [`huashu-art-motion`](https://github.com/alchaincyf/huashu-art-motion) 的“艺术风格配方卡”与“脉冲解说动画语法”设计哲学，坚决杜绝低质廉价的 AI Slop（无脑蓝紫霓虹、抽象悬浮图标、匀速慢推 PPT 感）。
+- **AI 赋能引擎**：基于 Muse AI 开放平台（OpenAI SDK 协议兼容，BaseURL: `https://yourselfai.org/muse/v1`），调用 `muse-spark` 生成精炼口播与结构化分镜，调用 `muse-image` / `muse-video` 生成多模态视觉素材。
+- **合成与交付**：30 秒以内黄金时长竖屏（9:16，1080×1920）高质感短视频，集成智能排版动态浮现字幕、配乐（BGM）对齐，输出至 `output/final_videos/` 供人工审核并分发至小红书、微信视频号、抖音等主流平台。
+
+### 1.2 端到端流水线流程图
+```mermaid
+flowchart TD
+    subgraph Data_ETL ["1. 数据抽取与状态管理 (Data ETL)"]
+        A1["HowToLiveBetter 仓库 (book/*.md)"] --> A2["01_data_extractor.py (正则与AST解析)"]
+        A2 --> A3[("SQLite 数据库 (pipeline.db) + progress.json")]
+    end
+
+    subgraph LLM_Storyboard ["2. 分镜设计与脚本生成 (muse-spark)"]
+        A3 --> B1["02_ai_generator.py (提取 Pending 条目)"]
+        B1 --> B2["Prompt 组装 (融合 huashu-art-motion 语法与风格卡)"]
+        B2 --> B3["调用 muse-spark LLM"]
+        B3 --> B4["生成结构化分镜 JSON (标题 / 30s旁白 / 浮现词 / 画面Prompt)"]
+    end
+
+    subgraph Media_Generation ["3. 多模态视觉生成 (muse-image / muse-video)"]
+        B4 --> C1["解析分镜中的画面 Prompt"]
+        C1 --> C2["调用 muse-image (高精关键帧) 或 muse-video (动态切片)"]
+        C2 --> C3["原始多模态素材落盘 (output/raw_assets/{id}/)"]
+        C3 --> C4["更新状态 -> Media_Generated"]
+    end
+
+    subgraph Video_Assembly ["4. 音视频装配与渲染 (03_video_assembler.py)"]
+        C4 --> D1["读取素材与分镜时间轴"]
+        D1 --> D2["运镜渲染 (Camera Track: 快推/微移/砸入)"]
+        D1 --> D3["动态关键字与字幕生成 (Pillow + MoviePy/FFmpeg)"]
+        D1 --> D4["音频编排 (TTS 旁白 + assets/bgm/ 自动淡入淡出混音)"]
+        D2 & D3 & D4 --> D5["合成渲染 1080x1920 MP4"]
+        D5 --> D6["保存至 output/final_videos/{id}.mp4"]
+        D6 --> D7["更新状态 -> Completed"]
+    end
+
+    subgraph Audit_Publish ["5. 人工复核与分发"]
+        D7 --> E1["创作者预览与审核"]
+        E1 --> E2["发布至 小红书 / 视频号 / 抖音"]
+    end
+```
+
+---
+
+## 2. 本地状态管理与数据库 Schema 设计
+
+全自动流水线面临网络波动、大模型 API 限流、多素材并行生成与断点续传的需求。采用 **SQLite + 自动镜像 `progress.json`** 的双轨持久化设计：
+- **SQLite (`pipeline.db`)**：主数据源，利用 ACID 事务与行级锁保证并发抓取和生成时的可靠性，支持复杂过滤与查询。
+- **`progress.json`**：轻量级镜像快照，方便人类开发者通过文本编辑器直观查看全局进度概览与快速调试。
+
+### 2.1 SQLite 数据表 DDL 设计
+
+```sql
+-- 核心条目状态主表
+CREATE TABLE IF NOT EXISTS entries (
+    id VARCHAR(32) PRIMARY KEY,                  -- 全局唯一条目ID，如 "01_001", "05_045"
+    source_file VARCHAR(128) NOT NULL,          -- 来源文件，如 "01-不要早死.md"
+    chapter_index INTEGER NOT NULL,             -- 章节序号，如 1
+    chapter_title VARCHAR(128) NOT NULL,         -- 章节标题，如 "不要早死"
+    item_index INTEGER NOT NULL,                -- 条目序号，如 1
+    title VARCHAR(256) NOT NULL,                -- 条目标题，如 "系安全带，前排后排都系"
+    cost_money VARCHAR(32),                     -- 成本标签：钱 (0 / 少 / 中 / 多)
+    cost_time VARCHAR(32),                      -- 成本标签：时间 (少 / 中 / 多)
+    cost_willpower VARCHAR(32),                 -- 成本标签：毅力 (否 / 些 / 强)
+    benefit_level VARCHAR(32),                  -- 成本标签：收益 (大 / 中)
+    benefit_metric VARCHAR(64),                 -- 成本标签：口径 (如 "死亡率")
+    
+    cost_desc TEXT,                             -- 原文：成本描述
+    plain_text TEXT,                            -- 原文：说人话
+    benefit_desc TEXT,                          -- 原文：收益详情
+    evidence_grade VARCHAR(8),                  -- 证据等级 (A / B / C)
+    source_citations TEXT,                      -- 原文文献与法规来源
+    notes TEXT,                                 -- 原文备注
+    
+    status VARCHAR(32) NOT NULL DEFAULT 'Pending', 
+    -- 状态流转机枚举：
+    -- 'Pending'            : 刚抽取入库，待处理
+    -- 'Script_Generated'   : 已完成大模型脚本与分镜生成
+    -- 'Media_Generated'    : 已完成图像/视频素材生成并保存在本地
+    -- 'Video_Assembled'    : 已完成音视频剪辑渲染
+    -- 'Completed'          : 质检通过，已归档
+    -- 'Failed'             : 任何阶段异常失败，需介入重试
+
+    script_json TEXT,                           -- muse-spark 生成的完整结构化分镜 JSON
+    raw_assets_dir VARCHAR(512),                -- 生成的原始图片/视频素材存放目录
+    final_video_path VARCHAR(512),              -- 最终合成的 MP4 文件绝对路径
+    retry_count INTEGER DEFAULT 0,              -- 失败重试次数
+    error_message TEXT,                         -- 最近一次错误堆栈记录
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引以优化状态过滤与断点续传检索
+CREATE INDEX IF NOT EXISTS idx_entries_status ON entries(status);
+CREATE INDEX IF NOT EXISTS idx_entries_chapter ON entries(chapter_index);
+```
+
+### 2.2 结构化分镜输出协议 (`script_json` Schema)
+大模型 `muse-spark` 生成的脚本必须严格遵循以下 JSON Schema：
+
+```json
+{
+  "entry_id": "01_001",
+  "video_title": "不要早死之系安全带，前排后排都系",
+  "target_duration_sec": 28,
+  "art_style_id": "25_ghibli",
+  "art_style_name": "吉卜力暖调手绘风格",
+  "color_palette": ["#2C3E50", "#E67E22", "#ECF0F1", "#27AE60"],
+  "narration_text_full": "坐前排系安全带，撞车时致命风险直接砍半；但你知道吗？第二排不系带，被撞死的人里足足有六成！花两秒扣紧，就能保住命。",
+  "scenes": [
+    {
+      "scene_index": 1,
+      "time_range": "0.0-4.0",
+      "duration_sec": 4.0,
+      "narration_segment": "坐小汽车前排系上安全带，致命风险能直接降一半。",
+      "primary_subject": "一双手敏捷扣入安全带卡扣，清脆锁止",
+      "visual_action": "镜头快推特写，卡扣咬合瞬间泛起反光，清晰的安全带织物斜纹",
+      "kinetic_typography": {
+        "text": "风险降50%",
+        "style": "slam_in",
+        "position": "center_high"
+      },
+      "image_prompt": "A close-up shot of hands buckling a car seat belt securely with a distinct click, detailed fabric texture of the black strap, warm cinematic sunlight through the car window, Ghibli hand-drawn aesthetic, high detail, clean composition, 9:16 vertical ratio",
+      "video_motion_prompt": "Camera quick punch-in zoom onto the belt buckle locking, sharp physical motion, ambient dust particles in sunlight"
+    },
+    {
+      "scene_index": 2,
+      "time_range": "4.0-12.0",
+      "duration_sec": 8.0,
+      "narration_segment": "但绝大多数人不知道，第二排如果不系，致命伤害风险暴增60%！",
+      "primary_subject": "汽车后排乘客座位的真实空镜与后排安全带自然垂挂",
+      "visual_action": "镜头微幅平移，红圈高亮标识后排位置",
+      "kinetic_typography": {
+        "text": "后排不系 60%致命",
+        "style": "highlight_box",
+        "position": "center"
+      },
+      "image_prompt": "Back seat of a modern passenger car, empty seating with hanging seatbelt, gentle warm daylight, thoughtful atmosphere, Studio Ghibli anime style, gouache background wash, 9:16 vertical ratio",
+      "video_motion_prompt": "Slow lateral pan from left to right across the back seats, subtle dust floating"
+    },
+    {
+      "scene_index": 3,
+      "time_range": "12.0-22.0",
+      "duration_sec": 10.0,
+      "narration_segment": "成本为零，每次上车只要多花两秒。世界卫生组织权威结论，A级硬核证据。",
+      "primary_subject": "仪表盘与驾驶位视角的明亮前路，平稳延伸的柏油大道",
+      "visual_action": "车辆平稳起步向前，两侧绿意盎然",
+      "kinetic_typography": {
+        "text": "成本=0秒 证据等级A",
+        "style": "data_badge",
+        "position": "bottom_third"
+      },
+      "image_prompt": "Driver's point of view inside a peaceful car, clear sunny asphalt road stretching into distance with green trees on sides, gentle warm colors, Ghibli scenic background art, detailed, serene, 9:16 vertical ratio",
+      "video_motion_prompt": "Forward tracking shot following the road ahead, steady and calm motion"
+    },
+    {
+      "scene_index": 4,
+      "time_range": "22.0-28.0",
+      "duration_sec": 6.0,
+      "narration_segment": "高性价比人生第一条：别侥幸，前排后排上车都系好。",
+      "primary_subject": "车内后视镜倒映出的坚定眼神与整洁安全带斜跨在肩",
+      "visual_action": "定镜停留，核心金句稳定落定",
+      "kinetic_typography": {
+        "text": "上车就扣好",
+        "style": "gold_sentence_lock",
+        "position": "center"
+      },
+      "image_prompt": "Rearview mirror inside a warm car reflecting calm confident eyes of the passenger, seatbelt clearly visible across chest, soft afternoon lighting, charming hand-painted aesthetic, 9:16 vertical ratio",
+      "video_motion_prompt": "Static shot with subtle breathing light shift, grounded ending"
+    }
+  ]
+}
+```
+
+---
+
+## 3. `huashu-art-motion` 风格理念与 Muse 提示词转化工程
+
+### 3.1 核心理念继承与防劣质 AI 原则
+参考 `huashu-art-motion` 项目的核心哲学，在自动化生成短视频时设立**四大铁律**：
+
+1. **绝对禁绝 AI Slop (无脑廉价 AI 感)**：
+   - 严禁出现蓝紫渐变、霓虹青紫光、悬浮科幻发光球体、代码数据雨、无脸光滑白模假人。
+   - 锁定具体的“画风”与“色板”（全片统一使用 1 种画风和 3~5 种调和色），不能每镜乱切画风。
+2. **必须有“具体的物与动作” (Physical Object & Action Driven)**：
+   - 坚决杜绝抽象概念（如讲“防骗”不能画个发光盾牌，要画“手机银行界面上的一张可疑二维码”或“盖着红印章的虚假公文”）。
+   - 每一个镜头必须有明确的名词（主物）与动词（动作）。
+3. **脉冲式节奏与镜头事件 (Pulse Motion Rhythm)**：
+   - 杜绝传统幻灯片“匀速慢推 5 秒”的催眠感。短视频的核心是：**停住（定点阐述） -> 0.28秒快推/砸入（重音事件） -> 停住（消化信息）**。
+   - 每一镜时长控制在 3~7 秒，全片总时长控制在 25~30 秒。
+4. **解说语法契合内容类型**：
+   - **意外与生死安全类**（如系安全带、戴头盔、防一氧化碳）：采用 **Kurzgesagt 扁平明快科普** 或 **吉卜力写实手绘风格**，亲切生活化，具象呈现。
+   - **制度/法律/骗局类**（如劳务合同、借贷担保、兼职诈骗）：采用 **Vox 调查剪报风格** 或 **利希滕斯坦波普风格**，高对比、真实凭据感。
+   - **医学/身体指标类**（如高血压、空腹血糖、幽门螺杆菌）：采用 **3Blue1Brown 清晰机理** 或 **当代扁平插画**，严谨数据看板与对比直观。
+
+### 3.2 风格配方映射库 (Style Recipe Mapping)
+
+| 适用条目类型 | 推荐风格 ID | 风格名称 | 视觉特征与色板 | Prompt 核心修饰语 |
+|---|---|---|---|---|
+| **大众生活/安全常识** | `25_ghibli` | 吉卜力暖色手绘风 | 水彩洗染、自然阳光漫射、生活细节丰富、温润治愈 | `Studio Ghibli aesthetic, hand-drawn anime background, warm natural sunlight, gouache wash texture, meticulous everyday details, peaceful and clean` |
+| **法律红线/诈骗档案** | `y2_vox` / `13_pop` | Vox剪报调查 / 波普风 | 真实纸纹、红线连接、牛皮纸、高对比度粗线条、本戴点 | `Vox-style investigative collage, torn aged paper, archival document aesthetic, high contrast red accents, halftone dots, sharp details` |
+| **医学常识/体检指标** | `y1_kurzgesagt` / `16_2026` | Kurzgesagt 扁平科普 | 鲜艳扁平色彩、几何轮廓、无复杂渐变、童趣明晰 | `Kurzgesagt art style, clean flat vector illustration, rich vibrant solid colors, whimsical scientific infographic, sharp geometric silhouettes` |
+| **心理关怀/生活哲学** | `24_hopper` / `30_matisse` | 霍珀光影 / 马蒂斯剪纸 | 强烈的斜射硬光块、孤独宁静感、深思熟虑的构图 | `Edward Hopper American realism style, dramatic geometric sunlight shadows, contemplative atmosphere, clean architectural planes` |
+
+### 3.3 Prompt 转化工程模板
+
+针对 `muse-image`（静态高精图）和 `muse-video`（动态视频），系统构建了专有 Prompt 编译引擎：
+
+#### (1) `muse-image` 提示词模板 (Prompt Template)
+```
+{Primary_Subject_And_Action}, 
+{Context_And_Environment}, 
+{Art_Style_Keywords}, 
+{Color_Palette_Specification}, 
+cinematic composition, vertical 9:16 aspect ratio, masterpiece, crisp focus, no text overlay, no watermark
+--negative_prompt: "blurry, low quality, deformed, neon purple futuristic cyber, abstract glowing icons, 3d glossy render, watermark, text"
+```
+
+#### (2) `muse-video` 动态控制提示词模板 (Video Motion Template)
+```
+{Camera_Action}: {camera_movement_type (e.g. quick punch-in zoom / smooth lateral tracking pan / stable static focus)}, 
+{Subject_Motion}: {physical_micro_movement (e.g. hands clicking the lock / steam rising / subtle wheel rotation)}, 
+photorealistic motion physics, clean frame transition, consistent art style
+```
+
+---
+
+## 4. 音视频合成技术选型：MoviePy vs FFmpeg 深度对比与架构决策
+
+在视频合成模块中，核心任务是将多段素材、动态文字字幕、配乐 BGM 进行拼接、对齐并输出为高质量 MP4。
+
+### 4.1 核心维度对比矩阵
+
+| 评估维度 | MoviePy (Python 原生框架) | 原生 FFmpeg (CLI / Filter-Complex) |
+|---|---|---|
+| **开发敏捷性** | 极高。完全通过 Python 对象（`CompositeVideoClip`, `AudioFileClip`）编排时间轴。 | 中等。需要手写复杂的 `-filter_complex` 字符串脚本。 |
+| **字幕与中文字体支持** | 痛点显著：原生 `TextClip` 依赖系统安装的 ImageMagick。在 Windows 下极易发生环境变量丢失、中文乱码或缺失字体错误。 | 极强：`drawtext` 滤镜原生支持直接指定 Windows 字体路径（如 `simhei.ttf`、`msyh.ttc`），无需额外依赖。 |
+| **渲染效率与资源占用** | 较慢。每一帧都要在 Python 进程中经由 NumPy 数组与 PIL 反复拷贝，高分辨率处理开销大。 | 极高。全 C 语言原生管道，支持多线程与 GPU 硬件加速（如 NVENC），耗时仅为 MoviePy 的 1/3 ~ 1/5。 |
+| **复杂过渡与运镜** | 容易实现自定义复合缓动曲线，但计算吃力。 | `zoompan`, `fade`, `overlay` 原生高效，但书写格式门槛高。 |
+| **依赖环境隔离** | `pip install moviepy`，但由于 Windows 下依赖 ImageMagick，易踩坑。 | 单一可执行文件（`ffmpeg.exe`），或通过 Python 的 `imageio-ffmpeg` 自动获取二进制，零外部安装负担。 |
+
+### 4.2 本项目架构选型决策：**“双模智能装配器 (Hybrid Video Assembler)”**
+
+针对 Windows 平台开发环境的实际情况，采用以 **原生 FFmpeg 滤镜引擎为核心、Pillow 图像排版渲染为字幕垫片** 的现代化高健壮性方案：
+1. **字幕与文字特效方案（Pillow + 离线透明 PNG 渲染）**：
+   - 彻底废除 MoviePy 对 ImageMagick 的强依赖！
+   - 使用 Python 的 `Pillow`（PIL）库加载 Windows 本地中文字体（如微软雅黑 `msyh.ttc` 或思源黑体），精准计算文字排版、阴影、背景胶囊框与浮现字，将各时间段的文字生成为透明通道 PNG 序列或静态图片。
+2. **音视频合成管道方案（FFmpeg Filter-Complex 自动代码生成器）**：
+   - 自动生成一条高内聚的 FFmpeg 命令行，利用 `concat`、`scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920` 适配竖屏，叠加 Pillow 生成的高质量抗锯齿字幕图层。
+   - 结合 `amix` 与 `afade` 将 TTS 语音与 `assets/bgm/` 背景音乐进行音量侧链闪避（Ducking）处理与尾部淡出。
+3. **MoviePy 兼容兜底**：
+   - 代码中同时保留 MoviePy 2.x 的原生装配实现，提供策略切换接口（`VideoAssemblerStrategy`），方便在不同操作系统与调试场景下自由切换。
+
+---
+
+## 5. 项目工程目录结构
+
+```
+HowToLiveBetter-Motion/
+├── .env.example               # 环境变量配置模板 (MUSE_API_KEY, BASE_URL)
+├── .gitignore                 # Git 忽略配置 (忽略虚拟环境, raw_assets, mp4等)
+├── README.md                  # 项目总说明与运行指南
+├── requirements.txt           # Python 依赖清单
+├── pipeline.db                # SQLite 状态数据库 (本地自动生成)
+├── progress.json              # 进度快照与人类可读状态
+│
+├── docs/                      # 设计与规范文档
+│   └── system_design.md       # [本系统设计文档]
+│
+├── assets/                    # 本地静态资产库
+│   ├── bgm/                   # 预设轻音乐与背景音 (mp3/wav)
+│   └── fonts/                 # 开源中文字体 (如思源黑体, 演示悠然体等)
+│
+├── src/                       # 核心业务模块
+│   ├── __init__.py
+│   ├── config.py              # 配置加载与环境变量解析 (os.getenv)
+│   ├── db.py                  # 数据库初始化、CRUD 与 progress.json 同步
+│   ├── extractor.py           # Markdown 提取与正则解析器
+│   ├── prompt_builder.py      # huashu 风格到 Muse Prompt 编译器
+│   ├── muse_client.py         # OpenAI 规范 Muse API 客户端包装
+│   └── assembler.py           # FFmpeg / MoviePy 视频合成与排版器
+│
+├── 01_data_extractor.py       # 执行脚本：拉取/解析书籍并初始化数据库
+├── 02_ai_generator.py         # 执行脚本：大模型分镜生成与多模态资产调用
+├── 03_video_assembler.py      # 执行脚本：音视频与字幕全自动合成导出
+│
+└── output/                    # 产物输出目录
+    ├── raw_assets/            # 各条目的原始图片与视频片段 (按 entry_id 分组)
+    └── final_videos/          # 最终交付的 1080x1920 MP4 成片
+```
+
+---
+
+## 6. 后续演进与分步实施计划
+
+本设计已全面覆盖第一步要求的全部架构与设计决策：
+- [x] **Step 1 达成**：完成两项目源码研究，制定完整 Schema、Prompt 转换法则与技术选型方案。
+- [ ] **Step 2 预备**：编写 `01_data_extractor.py` 与 `src/db.py`，支持自动 clone/拉取 `HowToLiveBetter` 仓库，正则提取 677 条完整条目并入库 SQLite 与 `progress.json`。
+- [ ] **Step 3 预备**：编写 `02_ai_generator.py`，打通 `muse-spark`、`muse-image`、`muse-video` 的 API 流水线与资产落盘。
+- [ ] **Step 4 预备**：编写 `03_video_assembler.py`，完成画面合成、字幕对齐与 BGM 混音。
+
+
+---
+
+## 7. 语音解说 (TTS) 与音画动态同步及背景音乐混音系统设计
+
+### 7.1 TTS 语音生成服务接入规范
+为提供高质量的大众科普讲解音频，系统接入基于 Cloudflare Workers 部署的 Edge-TTS 开放服务：
+- **API 端点**：`https://tts-voice-magic.shimizuhiro874-28e.workers.dev/v1/audio/speech`
+- **协议格式**：兼容 OpenAI Audio Speech 格式 (`POST /v1/audio/speech`)
+- **核心音色**：`"zh-CN-YunzeNeural"`（云泽·男声解说，声线稳重、诚恳、富有说服力，极度契合硬核科普与避坑指南）
+- **核心参数矩阵**：
+  * `speed`: `1.0`（可微调至 1.05 提升快节奏信息密度）
+  * `pitch`: `"0"`
+  * `style`: `"general"`
+- **请求 Payload 结构**：
+  ```json
+  {
+    "input": "坐前排系上安全带，车祸致命风险砍一半。",
+    "voice": "zh-CN-YunzeNeural",
+    "speed": 1.0,
+    "pitch": "0",
+    "style": "general"
+  }
+  ```
+- **输出格式**：二进制 MP3 音频流，直接落盘于 `output/raw_assets/{entry_id}/voice_scene_{i:02d}.mp3`。
+
+### 7.2 “以声定景 (Audio-Driven Duration)” 动态音画同步算法
+传统短视频流水线最大的痛点是“文字念完了画面还卡着”或“画面切走了语音还在念”。系统采用**以声定景**的时间轴计算引擎：
+
+```
+TTS 音频时长 (T_audio) ───► 增加呼吸缓冲 (Δt = 0.4~0.6s) ───► 决定分镜时长 (T_scene)
+                                                                 │
+                                                                 ▼
+                                                 ┌──────────────────────────────┐
+                                                 │ 下部黄金分割点字幕与语音同步   │
+                                                 │ 上部浮现大字重音闪现 2.5~3s   │
+                                                 │ 相机平滑运镜 (Ken Burns)     │
+                                                 └──────────────────────────────┘
+```
+
+1. **分镜时长动态计算公式**：
+   $$T_{scene}^{(i)} = \max\left(T_{audio}^{(i)} + \Delta t_{cushion},\; 3.0\right)$$
+   其中 $\Delta t_{cushion} \approx 0.5\text{s}$ 作为句末呼吸气口，让观众在听完重要数据后有充分时间消化视听信息。
+2. **多幕平滑衔接**：
+   每幕画面与语音轨绑定为独立复合子轨，在分镜切换处应用 $0.5\text{s}$ 的交叉溶解叠化（CrossFadeIn），语音与画面协同自然切入。
+3. **整体时长控制**：
+   4 幕解说总净时长约为 $\sum T_{scene}^{(i)} - 3 \times 0.5\text{s} \approx 25 \sim 29\text{s}$，完美契合短视频 30 秒黄金推荐时段。
+
+### 7.3 背景音乐 (BGM) 智能衰减与混音策略
+为彻底解决背景音乐喧宾夺主的问题，系统建立如下混音衰减规则：
+1. **音频素材源**：
+   直接检索项目根目录下的 `backgroup_music/` 文件夹（支持 `01_country_music.mp3`, `02_NastelBom.mp3`, `03_AbsoluteSound.mp3` 等任意自定义 MP3）。彻底废除原先的临时合成音。
+2. **响度与音量平衡矩阵 (Volume Balancing Matrix)**：
+   * **解说主音轨 (TTS Voice Track)**：音量权重归一化设置为 **1.0 (0 dB)**，保证人声极其清晰明亮。
+   * **背景音乐轨 (BGM Track)**：音量权重严格压低至 **0.08 ~ 0.12 (-20 dB)**，作为纯粹的衬底氛围轻音乐，杜绝掩盖或干扰人声。
+3. **音乐动态包络 (Audio Envelope)**：
+   * 起始处：**1.0 秒平滑淡入**（AudioFadeIn）。
+   * 结尾处：**2.0 秒平滑淡出**（AudioFadeOut），避免骤停突兀。
