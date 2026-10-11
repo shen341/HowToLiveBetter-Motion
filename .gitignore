@@ -19,3 +19,7 @@ data/HowToLiveBetter/.git/
 # SQLite databases & temp files
 *.tmp
 *.log
+*.db-shm
+*.db-wal
+*TEMP_MPY*
+output/*.png

@@ -311,13 +311,16 @@ HowToLiveBetter-Motion/
 
 ---
 
-## 6. 后续演进与分步实施计划
+## 6. 流水线阶段实施状态与架构演进记录
 
-本设计已全面覆盖第一步要求的全部架构与设计决策：
-- [x] **Step 1 达成**：完成两项目源码研究，制定完整 Schema、Prompt 转换法则与技术选型方案。
-- [ ] **Step 2 预备**：编写 `01_data_extractor.py` 与 `src/db.py`，支持自动 clone/拉取 `HowToLiveBetter` 仓库，正则提取 677 条完整条目并入库 SQLite 与 `progress.json`。
-- [ ] **Step 3 预备**：编写 `02_ai_generator.py`，打通 `muse-spark`、`muse-image`、`muse-video` 的 API 流水线与资产落盘。
-- [ ] **Step 4 预备**：编写 `03_video_assembler.py`，完成画面合成、字幕对齐与 BGM 混音。
+本项目核心全自动生成流水线已全面实施并投产验证：
+- [x] **Step 1 基建与架构方案 (已完成)**：完成数据源与 `huashu-art-motion` 研究，制定架构设计、数据库 Schema 与提示词模板。
+- [x] **Step 2 数据抽取与状态持久化 (已完成)**：编写 `01_data_extractor.py`、`src/extractor.py` 与 `src/db.py`，完整解析 34 章节 677 条目入库 SQLite 与 `progress.json`。
+- [x] **Step 3 多模态生成与 TTS 语音讲解 (已完成)**：编写 `02_ai_generator.py`、`src/muse_client.py` 与 `src/tts_client.py`，打通 Muse AI 真实接口与 Cloudflare Edge-TTS，实现「以声定景」动态时长对齐。
+- [x] **Step 4 音视频编排与后期合成 (已完成)**：编写 `03_video_assembler.py` 与 `src/assembler.py`，实现 Ken Burns 运镜、0.5s 交叉溶解、上下黄金分割点文字卡片与 `backgroup_music/` 弱音混音。
+- [x] **Step 5 AI 语义理解自主选风升级 (已完成)**：实现 7 大艺术风格卡配方库与大模型自主决策机制，支持 `--style auto/chapter/<id>` 灵活切换。
+
+详细架构决策推演请查阅 [docs/decisions/ (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)；后续生产演进任务与迭代规划请查阅 [docs/TODO.md](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)。
 
 
 ---
