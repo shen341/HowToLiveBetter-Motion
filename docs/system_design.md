@@ -203,14 +203,24 @@ CREATE INDEX IF NOT EXISTS idx_entries_chapter ON entries(chapter_index);
    - **制度/法律/骗局类**（如劳务合同、借贷担保、兼职诈骗）：采用 **Vox 调查剪报风格** 或 **利希滕斯坦波普风格**，高对比、真实凭据感。
    - **医学/身体指标类**（如高血压、空腹血糖、幽门螺杆菌）：采用 **3Blue1Brown 清晰机理** 或 **当代扁平插画**，严谨数据看板与对比直观。
 
-### 3.2 风格配方映射库 (Style Recipe Mapping)
+### 3.2 风格配方库与 AI 自主决策机制 (Autonomous Style Selection)
 
-| 适用条目类型 | 推荐风格 ID | 风格名称 | 视觉特征与色板 | Prompt 核心修饰语 |
+系统内置丰富的 `huashu-art-motion` 风格卡配方库，并支持 **AI 语义理解智能自主决策**：
+
+| 适用条目类型 / 语义情感 | 风格 ID | 风格名称 | 视觉特征与色板 | Prompt 核心基石修饰语 |
 |---|---|---|---|---|
-| **大众生活/安全常识** | `25_ghibli` | 吉卜力暖色手绘风 | 水彩洗染、自然阳光漫射、生活细节丰富、温润治愈 | `Studio Ghibli aesthetic, hand-drawn anime background, warm natural sunlight, gouache wash texture, meticulous everyday details, peaceful and clean` |
-| **法律红线/诈骗档案** | `y2_vox` / `13_pop` | Vox剪报调查 / 波普风 | 真实纸纹、红线连接、牛皮纸、高对比度粗线条、本戴点 | `Vox-style investigative collage, torn aged paper, archival document aesthetic, high contrast red accents, halftone dots, sharp details` |
-| **医学常识/体检指标** | `y1_kurzgesagt` / `16_2026` | Kurzgesagt 扁平科普 | 鲜艳扁平色彩、几何轮廓、无复杂渐变、童趣明晰 | `Kurzgesagt art style, clean flat vector illustration, rich vibrant solid colors, whimsical scientific infographic, sharp geometric silhouettes` |
-| **心理关怀/生活哲学** | `24_hopper` / `30_matisse` | 霍珀光影 / 马蒂斯剪纸 | 强烈的斜射硬光块、孤独宁静感、深思熟虑的构图 | `Edward Hopper American realism style, dramatic geometric sunlight shadows, contemplative atmosphere, clean architectural planes` |
+| **大众生活 / 身心健康 / 守护** | `25_ghibli` | 吉卜力暖色手绘风 | 水彩洗染、自然阳光漫射、生活细节丰富、温润治愈 | `Studio Ghibli aesthetic, hand-drawn anime background, warm natural sunlight, gouache wash texture, meticulous everyday details, peaceful and clean` |
+| **法律红线 / 诈骗档案 / 维权** | `y2_vox` | Vox 剪报调查风 | 真实纸纹、红线连接、牛皮纸、档案感、高对比黑白红 | `Vox-style investigative collage, torn aged paper, archival document aesthetic, high contrast red accents, halftone dots, sharp details` |
+| **科学常识 / 机理数据 / 精力** | `y1_kurzgesagt` | Kurzgesagt 扁平科普 | 鲜艳纯净色块、几何轮廓分明、趣味科学图解、高信息密度 | `Kurzgesagt art style, clean flat vector illustration, rich vibrant solid colors, whimsical scientific infographic, sharp geometric silhouettes` |
+| **反直觉痛点 / 消费陷阱 / 警示** | `13_pop` | 利希滕斯坦波普风 | 本戴点网格纹理、粗黑描边、经典美漫原色冲击、戏剧性张力 | `Roy Lichtenstein pop art, Ben-Day dots texture, bold black outlines, vintage comic book aesthetic, vibrant primary colors, graphic punchy composition` |
+| **都市压力 / 独处心理 / 沉思** | `24_hopper` | 霍珀美国现实主义风 | 强烈斜射几何光块、孤独宁静感、深思熟虑的构图与空间 | `Edward Hopper American realism style, dramatic geometric sunlight shadows, contemplative atmosphere, clean architectural planes` |
+| **处世哲学 / 心态调适 / 修身** | `17_ink` | 新中式东方水墨风 | 东方水墨晕染留白、淡雅矿物设色、宁静从容、东方哲学意境 | `modern Chinese ink wash painting, ethereal poetic composition, delicate sumi-e brush strokes, mineral color accents, elegant negative space` |
+| **习惯打卡 / 行动微习惯 / 游戏化**| `14_pixel` | 8-Bit 像素复古游戏风| 精致复古像素点阵、街机闯关感、通关成就感、轻松趣味 | `detailed 16-bit pixel art style, nostalgic retro game aesthetic, vibrant palette, clean isometric or side-view composition` |
+
+#### 三种运行控制模式：
+1. **`--style auto`（默认推荐）**：全权交由大模型（`muse-spark`）通读条目的「核心要点」、「情绪内核」与「受众心理冲击」，从上述风格库中自主分析并决策最契合的画风，并在 `storyboard.json` 中输出选风理由 `art_style_reason`。
+2. **`--style chapter`**：遵循章节大类别统一推荐，保持系列视频的视觉品牌一致性。
+3. **`--style <id>`（人工强制）**：如 `--style y2_vox` 或 `--style 13_pop`，方便对同篇文案进行不同视觉风格的 A/B 效果对比。
 
 ### 3.3 Prompt 转化工程模板
 

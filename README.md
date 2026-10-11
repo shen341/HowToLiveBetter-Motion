@@ -1,6 +1,6 @@
 # HowToLiveBetter-Motion (高性价比人生指南 · 短视频自动化流水线)
 
-> 基于知识库 [HowToLiveBetter](https://github.com/eternity4719/HowToLiveBetter) 与 [huashu-art-motion](https://github.com/alchaincyf/huashu-art-motion) 艺术美学理念，通过 Muse AI（`muse-spark`, `muse-image`, `muse-video`）与 MoviePy 全自动批量生成 30 秒移动端竖屏短视频。
+> 基于知识库 [HowToLiveBetter](https://github.com/eternity4719/HowToLiveBetter) 与 [huashu-art-motion](https://github.com/alchaincyf/huashu-art-motion) 艺术美学理念，通过 Muse AI（`muse-spark`, `muse-image`, `muse-video`）、Cloudflare Worker Edge-TTS（`zh-CN-YunzeNeural`）与 MoviePy 全自动批量生成高质量科普短视频。
 
 ---
 
@@ -10,17 +10,20 @@
    - 自动解析 `HowToLiveBetter` 中 34 个章节、677 条生活建议。
    - 提取成本标签（钱/时间/毅力/收益/口径）、说人话释义、权威证据等级（A/B/C 级）。
    - SQLite 工业级持久化（`pipeline.db`）+ 人类可读状态镜像快照（`progress.json`）。
-2. **深度融入 `huashu-art-motion` 艺术美学**：
+2. **深度融入 `huashu-art-motion` 艺术美学与黄金分割布局**：
    - **绝无 AI Slop**：坚决摒弃廉价的蓝紫霓虹、抽象发光球体、无脸白模人偶，全片锁定单一高级艺术画风（吉卜力水彩手绘、Vox 调查剪报、Kurzgesagt 扁平科普、霍珀现实主义等）。
-   - **具体的“物”与“动作”**：每个分镜必须围绕现实中的物理实体（安全带卡扣、燃气阀门、血压计仪表、药盒标签）和具体动作展开。
-   - **脉冲式解说节奏**：停住阐释 -> 0.28秒快推/横移重音 -> 停住消化，彻底消除 PPT 幻灯片般的催眠慢推感。
-3. **OpenAI SDK 规范无缝接入 Muse AI**：
+   - **上部黄金分割点（$Y \approx 733\text{px}$）**：核心浮现关键词/重音数字卡片（Kinetic Typography），琥珀金高亮徽章与浮现动效。
+   - **下部黄金分割点（$Y \approx 1186\text{px}$）**：高级深色磨砂半透明胶囊字幕（Frosted Dark Glass），避开抖音/小红书底部评论与操作区遮挡。
+   - **连续动态运镜与平滑转场**：集成 Ken Burns 镜头推拉/平移运镜与 0.5s 电影感交叉溶解（Cross-dissolve）叠化过渡。
+3. **OpenAI SDK 规范接入 Muse AI**：
    - 使用 `muse-spark` 提炼 30 秒精炼口播与四幕紧凑分镜。
-   - 自动适配生成高画质 9:16（1080×1920）竖屏图像素材（`muse-image`）或动态切片（`muse-video`）。
-4. **现代化音视频装配管线**：
-   - 纯 Python + MoviePy + Pillow 离线高质量文字光栅化，**彻底摆脱 Windows 环境对 ImageMagick 的繁琐配置依赖**，中文排版零乱码。
-   - 包含顶部胶囊标识卡、中间重音浮现大字卡片（Kinetic Typography）、底部自适应磨砂两行旁白字幕。
-   - 自动混入 `assets/bgm/` 背景轻音乐，支持音量智能侧链（0.4 适中音量）、自动淡入与淡出。
+   - 自动生成 9:16（1024×1792）高精艺术画作（`muse-image`）或动态切片。
+4. **Cloudflare Edge-TTS 原生讲解与音画精准同步**：
+   - 调用 Edge-TTS 云端服务，采用 **`"zh-CN-YunzeNeural"`**（云泽·男声解说，沉稳富有说服力）。
+   - **以声定景（Audio-Driven Duration）**：分镜时长与下部黄金分割点文字展示自动对齐语音时长（语音时长 + 0.5s 舒适呼吸留白）。
+5. **自定义背景音乐（BGM）与微音量混音**：
+   - 自动读取根目录 `backgroup_music/` 下的 MP3 音乐（内置 `01_country_music.mp3`, `02_NastelBom.mp3`, `03_AbsoluteSound.mp3` 等）。
+   - 背景音乐音量精确压低至 **0.09（-20dB 舒适弱音）**，搭配 1.0s 淡入与 2.0s 淡出，**纯衬底、绝不抢戏或干扰人声解说**！
 
 ---
 
@@ -28,7 +31,7 @@
 
 ```
 HowToLiveBetter-Motion/
-├── .env.example               # 环境变量配置模板
+├── .env.example               # 环境变量配置模板 (Muse API & TTS 配置)
 ├── .gitignore                 # Git 忽略配置
 ├── README.md                  # 项目全景使用指南
 ├── requirements.txt           # Python 依赖清单
@@ -38,9 +41,14 @@ HowToLiveBetter-Motion/
 ├── docs/                      # 架构与设计规范
 │   └── system_design.md       # 系统架构设计、Schema 与技术选型文档
 │
+├── backgroup_music/           # 自定义背景音乐库 (放入任意 .mp3 音乐)
+│   ├── 01_country_music.mp3
+│   ├── 02_NastelBom.mp3
+│   └── 03_AbsoluteSound.mp3
+│
 ├── assets/                    # 本地静态资产库
-│   ├── bgm/                   # 预设背景轻音乐 (内置 default_ambient.wav)
-│   └── fonts/                 # 本地中文字体 (自动兼容 Windows 微软雅黑)
+│   ├── fonts/                 # 本地中文字体 (自动兼容 Windows 微软雅黑)
+│   └── bgm/                   # 预设备用音频
 │
 ├── src/                       # 核心业务组件
 │   ├── __init__.py
@@ -49,17 +57,18 @@ HowToLiveBetter-Motion/
 │   ├── extractor.py           # Markdown 正则与 AST 解析器
 │   ├── prompt_builder.py      # huashu 风格美学与 Prompt 编译器
 │   ├── muse_client.py         # Muse AI API 客户端与离线模拟器
-│   └── assembler.py           # MoviePy 视频串联、字幕排版与混音引擎
+│   ├── tts_client.py          # Cloudflare Edge-TTS 语音生成与时长测量
+│   └── assembler.py           # MoviePy 运镜、转场、黄金分割字幕与混音引擎
 │
 ├── 01_data_extractor.py       # 步骤 1: 数据拉取、结构化抽取与状态入库
-├── 02_ai_generator.py         # 步骤 2: 大模型分镜规划与多模态资产生成
-├── 03_video_assembler.py      # 步骤 3: 视频全自动合成渲染与成片输出
+├── 02_ai_generator.py         # 步骤 2: 大模型分镜规划、素材生成与 TTS 语音合成
+├── 03_video_assembler.py      # 步骤 3: 运镜转场与双轨混音全自动合成输出
 │
 ├── data/                      # 原始数据源
 │   └── HowToLiveBetter/       # 克隆的知识库仓库 (book/*.md)
 │
 └── output/                    # 产物输出目录
-    ├── raw_assets/            # 各条目分镜脚本与图片/视频素材 (output/raw_assets/{id}/)
+    ├── raw_assets/            # 各条目分镜脚本、原画与语音 (output/raw_assets/{id}/)
     └── final_videos/          # 最终交付的 1080x1920 MP4 成片
 ```
 
@@ -87,7 +96,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-在 `.env` 中填入你的 Muse AI 密钥（代码严格从 `os.getenv` 读取，绝无硬编码）：
+在 `.env` 中配置你的 Muse AI 密钥与 TTS 设置：
 
 ```ini
 # Muse API 配置
@@ -99,13 +108,18 @@ MODEL_TEXT=muse-spark
 MODEL_IMAGE=muse-image
 MODEL_VIDEO=muse-video
 
+# TTS 语音生成配置 (Cloudflare Worker Edge-TTS)
+TTS_API_URL=https://tts-voice-magic.shimizuhiro874-28e.workers.dev/v1/audio/speech
+TTS_VOICE=zh-CN-YunzeNeural
+TTS_SPEED=1.0
+TTS_PITCH=0
+TTS_STYLE=general
+
 # 视频产物配置
 VIDEO_WIDTH=1080
 VIDEO_HEIGHT=1920
 VIDEO_FPS=30
 ```
-
-> 💡 **提示**：若暂无 `MUSE_API_KEY`，所有脚本均内置 `--mock` 离线测试模式，支持在本地全流程闭环验证！
 
 ---
 
@@ -126,72 +140,50 @@ python 01_data_extractor.py --chapter 1
 python 01_data_extractor.py --force
 ```
 
-运行后将生成：
-- `pipeline.db`：SQLite 数据库
-- `progress.json`：全局进度追踪快照
-
 ---
 
-### 步骤 2：大模型分镜规划与视觉素材生成 (`02_ai_generator.py`)
+### 步骤 2：大模型分镜规划、原画与 TTS 语音生成 (`02_ai_generator.py`)
 
-将建议条目结合 `huashu-art-motion` 风格卡，调用 `muse-spark` 生成 30 秒分镜与旁白，并调用 `muse-image` 生成分镜关键帧：
+将建议条目结合 `huashu-art-motion` 风格卡，调用 `muse-spark` 生成分镜，调用 `muse-image` 生成艺术原画，并调用 TTS 服务合成 `zh-CN-YunzeNeural` 语音。**现已全面支持 AI 自主语义选风与自定义风格控制**：
 
 ```bash
-# 指定条目 ID 生成素材 (例如 01_001 系安全带)
-python 02_ai_generator.py --entry-id 01_001
+# 1. 默认模式：AI 根据内容语义与情绪基调自主决策最佳画风 (--style auto)
+python 02_ai_generator.py --entry-id 09_001
 
-# 批量处理前 5 个 Pending 状态条目
+# 2. 章节统一模式：按所属章节统一画风系列 (--style chapter)
+python 02_ai_generator.py --entry-id 01_001 --style chapter
+
+# 3. 强制指定画风模式：手动测试对比特定艺术风格 (如 y2_vox, y1_kurzgesagt, 13_pop, 24_hopper, 25_ghibli, 17_ink, 14_pixel)
+python 02_ai_generator.py --entry-id 01_001 --style y2_vox --force
+
+# 4. 批量处理前 5 个待处理条目 (全自动智能选风)
 python 02_ai_generator.py --limit 5
-
-# 离线模拟测试 (无需消耗 API Key，生成高质感测试素材)
-python 02_ai_generator.py --entry-id 01_001 --mock
 ```
 
 产物保存在：`output/raw_assets/{entry_id}/`
-- `storyboard.json`：包含视频标题、旁白、浮现字、生图 Prompt
-- `scene_01.png` ~ `scene_04.png`：高清 9:16 分镜画面
+- `storyboard.json`：包含选定艺术风格（`art_style_id`）、选风依据（`art_style_reason`）、分镜、Prompt、精确语音时长与动态同步时长
+- `scene_01.png` ~ `scene_04.png`：高清 9:16 分镜艺术原画
+- `voice_01.mp3` ~ `voice_04.mp3`：各分镜解说语音 MP3
 
 ---
 
-### 步骤 3：音视频全自动合成与配乐排版 (`03_video_assembler.py`)
+### 步骤 3：音视频全自动合成、运镜转场与配乐混音 (`03_video_assembler.py`)
 
-利用 `moviepy` 串联画面、添加动态文字特效、顶部胶囊标识、磨砂字幕并混入 BGM：
+使用 `moviepy` 动态加载分镜与语音轨，添加 Ken Burns 运镜、0.5s 叠化转场、上下黄金分割点文字卡片，并混入 `backgroup_music/` 背景音乐：
 
 ```bash
 # 合成指定条目的短视频 (例如 01_001)
 python 03_video_assembler.py --entry-id 01_001
 
-# 批量合成所有状态为 Media_Generated 的条目
+# 批量合成所有已就绪的条目
 python 03_video_assembler.py --limit 5
 
 # 指定自定义 BGM
-python 03_video_assembler.py --entry-id 01_001 --bgm assets/bgm/my_music.mp3
+python 03_video_assembler.py --entry-id 01_001 --bgm backgroup_music/01_country_music.mp3
 ```
 
 产物保存在：`output/final_videos/{entry_id}_{标题}.mp4`
 合成完成后，条目状态自动流转为 `Completed`。
-
----
-
-## 📊 状态机生命周期流转
-
-```
-[Markdown 原文]
-       │
-       ▼ (01_data_extractor.py)
-   Pending (待处理)
-       │
-       ▼ (02_ai_generator.py - muse-spark)
-Script_Generated (分镜脚本已生成)
-       │
-       ▼ (02_ai_generator.py - muse-image)
-Media_Generated (视觉素材已就绪)
-       │
-       ▼ (03_video_assembler.py - moviepy)
-   Completed (视频已合成，可发布)
-```
-
-如在任何阶段发生网络波动或异常，系统将标记为 `Failed` 并保留完整异常堆栈，支持修复后直接对指定 ID 重新执行。
 
 ---
 
@@ -203,11 +195,3 @@ Media_Generated (视觉素材已就绪)
 | `y2_vox` | Vox 调查剪报风 | 法律红线、金融防骗、合同维权 | 真实纸纹拼贴、红线指引、高对比度黑白档案感 |
 | `y1_kurzgesagt` | Kurzgesagt 扁平科普 | 精力管理、时间分配、常识机制 | 鲜明纯色平涂色块、几何轮廓、无复杂蓝紫渐变 |
 | `24_hopper` | 霍珀现实主义风 | 情绪压力、重大变故、人生哲学 | 斜射几何光块、市井现实主义、克制沉静构图 |
-
----
-
-## 📜 许可证与数据来源
-
-- 知识库内容遵循 CC BY 4.0 协议，数据源来自 [eternity4719/HowToLiveBetter](https://github.com/eternity4719/HowToLiveBetter)。
-- 艺术动画方法论参考自 [alchaincyf/huashu-art-motion](https://github.com/alchaincyf/huashu-art-motion)。
-- 本项目代码遵循 MIT License 开源协议。

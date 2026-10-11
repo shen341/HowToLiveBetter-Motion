@@ -7,50 +7,84 @@ STYLE_RECIPES = {
     "25_ghibli": {
         "name": "吉卜力暖调手绘风",
         "description": "水彩洗染、自然漫射暖阳、质朴生活细节、温润治愈手绘感",
+        "suitable_for": "健康习惯、日常生活、家庭温情、身心治愈、生命保护类条目",
         "keywords": "Studio Ghibli aesthetic, hand-drawn anime background, warm natural sunlight, gouache wash texture, meticulous everyday details, peaceful and clean composition",
         "negative": "blurry, low quality, neon purple futuristic cyber, abstract glowing icons, 3d glossy render, watermark, text"
     },
     "y1_kurzgesagt": {
         "name": "Kurzgesagt 扁平科普风",
         "description": "高饱和纯净色块、几何轮廓分明、极简无描边或清晰轮廓、童趣明晰科普感",
+        "suitable_for": "生理机制、医学常识、科学数据、精力时间管理、认知心理学拆解类条目",
         "keywords": "Kurzgesagt art style, clean flat vector illustration, rich vibrant solid colors, whimsical scientific infographic, sharp geometric silhouettes, immaculate lighting",
         "negative": "photorealistic, noisy gradients, 3d render, dark neon cyber, blurry, deformed, watermark"
     },
     "y2_vox": {
         "name": "Vox 调查剪报拼贴风",
-        "description": "真实复古纸纹、剪报拼贴、红线引导、档案感、高对比黑白配高饱和重点色",
+        "description": "真实复古纸纹、剪报拼贴、红线引导、档案卷宗感、高对比黑白配高饱和警示色",
+        "suitable_for": "法律红线、金融防骗、合同维权、安全隐患调查、反直觉反诈调查类条目",
         "keywords": "Vox-style investigative collage, torn aged paper textures, archival document aesthetic, high contrast red accents, halftone printing dots, sharp journalistic details",
         "negative": "cartoonish, cute anime, pastel tones, 3d glossy, abstract sci-fi, blurry, watermark"
     },
     "13_pop": {
         "name": "利希滕斯坦波普艺术风",
-        "description": "本戴点网格纹理、粗重黑色描边、经典美漫原色冲击、复古摩登",
+        "description": "本戴点网格纹理、粗重黑色描边、经典美漫原色冲击、复古摩登张力",
+        "suitable_for": "强烈反常识痛点、消费陷阱、人际冲突、情绪破防、高警醒度警示类条目",
         "keywords": "Roy Lichtenstein pop art, Ben-Day dots texture, bold black outlines, vintage comic book aesthetic, vibrant primary colors, graphic punchy composition",
         "negative": "soft watercolor, photorealistic, gloomy dark, 3d cgi, blurry, watermark"
     },
     "24_hopper": {
         "name": "霍珀美国现实主义风",
-        "description": "强烈斜射几何光块、深思熟虑的构图、市井生活写实、克制孤独感",
+        "description": "强烈斜射几何光块与阴影、深思熟虑的构图、市井生活写实、克制孤独沉思感",
+        "suitable_for": "都市打工人、独处与内心压力、人际交往、夜间作息、沉思人生类条目",
         "keywords": "Edward Hopper American realism style, dramatic geometric sunlight shadows, architectural clean planes, contemplative atmosphere, cinematic framing",
         "negative": "anime, cute cartoon, cyberpunk neon, hyper-saturated fantasy, chaotic details, watermark"
+    },
+    "17_ink": {
+        "name": "新中式东方水墨风",
+        "description": "东方水墨晕染留白、淡雅矿物设色、宁静从容、东方哲学意境",
+        "suitable_for": "处世哲学、断舍离、心态调适、中式养生、静心修身类条目",
+        "keywords": "modern Chinese ink wash painting, ethereal poetic composition, delicate sumi-e brush strokes, mineral color accents, elegant negative space, tranquil atmosphere",
+        "negative": "loud neon, western comic, sharp geometric, cluttered, noisy 3d, watermark"
+    },
+    "14_pixel": {
+        "name": "8-Bit 像素复古游戏风",
+        "description": "精致复古像素点阵、街机闯关界面感、成就奖励图标、轻松趣味打怪升级感",
+        "suitable_for": "习惯打卡、微小行动积累、目标达成、游戏化生活类条目",
+        "keywords": "detailed 16-bit pixel art style, nostalgic retro game aesthetic, vibrant palette, clean isometric or side-view composition, charming playful details",
+        "negative": "blurry, smooth photorealistic, soft watercolor, dark gloomy, watermark"
     }
 }
 
 
+def get_style_recipe(style_id: str) -> Dict[str, Any]:
+    """Retrieve style recipe by ID with fallback to 25_ghibli."""
+    return STYLE_RECIPES.get(style_id, STYLE_RECIPES["25_ghibli"])
+
+
+def format_style_palette_menu() -> str:
+    """Format the style recipe palette for LLM autonomous selection."""
+    lines = []
+    for sid, info in STYLE_RECIPES.items():
+        lines.append(f"- 【{sid}】 {info['name']}: {info['description']}（适合：{info['suitable_for']}）")
+    return "\n".join(lines)
+
+
 def recommend_style_for_entry(chapter_index: int) -> str:
-    """Recommend a style card based on chapter domain."""
+    """Recommend a style card based on chapter domain (default fallback)."""
     # 01(不要早死), 02(不要慢慢死), 13(紧急情况), 24(看病) -> Ghibli (温润生活守护)
     if chapter_index in (1, 2, 13, 24, 27, 34):
         return "25_ghibli"
-    # 05(不要浪费钱), 08(别把自己搭进去), 09(法律红线), 11(技术红线), 12(创业), 15(买房租房) -> Vox / Pop (硬核证据与规则)
+    # 05(不要浪费钱), 08(别把自己搭进去), 09(法律红线), 11(技术红线), 12(创业), 15(买房租房) -> Vox (硬核调查与规则)
     elif chapter_index in (5, 8, 9, 11, 12, 15, 19):
         return "y2_vox"
     # 03(精力), 04(时间), 06(反面清单), 23(学技能) -> Kurzgesagt (清晰机制拆解)
     elif chapter_index in (3, 4, 6, 23, 26):
         return "y1_kurzgesagt"
     # 07(没钱), 10(恋爱结婚), 17(老人), 18(养孩子), 22(放松), 29(重大打击) -> Hopper (真实人情生活)
-    else:
+    elif chapter_index in (7, 10, 17, 18, 22, 29):
         return "24_hopper"
+    else:
+        return "25_ghibli"
 
 
 def build_system_prompt() -> str:
@@ -75,7 +109,7 @@ def build_system_prompt() -> str:
 6. **核心浮现字 (Kinetic Typography)**：
    - 每一镜提炼 1 个简短有力的屏幕浮现词（2-8字），用于短视频大字冲击，例如“风险降50%”、“后排不系 60%致命”、“成本=0秒”。
 7. **多模态视觉 Prompts 规范**：
-   - `image_prompt`: 英文，面向生图模型。必须包含具体的物理实体、动作、构图（9:16 vertical ratio）、景别、光影质感，以及所选风格的关键词。
+   - `image_prompt`: 英文，面向生图模型。必须包含具体的物理实体、动作、构图（9:16 vertical ratio）、景别、光影质感，以及所选艺术画风的基石关键词！
    - `video_motion_prompt`: 英文，面向视频运镜控制。写明镜头运动（如 `Camera quick punch-in zoom`, `Smooth lateral tracking pan`, `Static grounded hold`）与微动细节。
 
 【输出格式】
@@ -86,6 +120,7 @@ def build_system_prompt() -> str:
   "target_duration_sec": 28,
   "art_style_id": "25_ghibli",
   "art_style_name": "吉卜力暖调手绘风",
+  "art_style_reason": "条目涉及家庭乘车出行与生命安全，吉卜力暖调手绘能传递珍惜生活、温润治愈的守护感，避免生硬说教",
   "color_palette": ["#...", "#...", "#..."],
   "narration_text_full": "完整旁白文本...",
   "scenes": [
@@ -101,7 +136,7 @@ def build_system_prompt() -> str:
         "style": "slam_in",
         "position": "center_high"
       },
-      "image_prompt": "Detailed English prompt for image generation, 9:16 vertical aspect ratio...",
+      "image_prompt": "Detailed English prompt for image generation, 9:16 vertical aspect ratio, including style keywords...",
       "video_motion_prompt": "Camera motion prompt in English..."
     }
   ]
@@ -109,11 +144,15 @@ def build_system_prompt() -> str:
 """
 
 
-def build_user_prompt(entry: Dict[str, Any]) -> str:
-    """Build user prompt with entry data and recommended style card."""
-    style_id = recommend_style_for_entry(entry.get("chapter_index", 1))
-    style_info = STYLE_RECIPES.get(style_id, STYLE_RECIPES["25_ghibli"])
-
+def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto") -> str:
+    """Build user prompt with entry data and dynamic style selection instruction.
+    
+    style_mode can be:
+      - 'auto': AI analyzes entry semantics and autonomously chooses the best style card.
+      - 'chapter': Follows the recommended chapter-level style.
+      - '<style_id>': Forcibly uses a specific style card (e.g. 'y2_vox', '25_ghibli').
+    """
+    chapter_index = entry.get("chapter_index", 1)
     chapter_title = entry.get("chapter_title", "")
     item_title = entry.get("title", "")
     entry_id = entry.get("id", "")
@@ -122,6 +161,42 @@ def build_user_prompt(entry: Dict[str, Any]) -> str:
     benefit_desc = entry.get("benefit_desc", "")
     evidence_grade = entry.get("evidence_grade", "A")
     notes = entry.get("notes", "")
+
+    chapter_recommended_id = recommend_style_for_entry(chapter_index)
+    chapter_style_info = get_style_recipe(chapter_recommended_id)
+
+    if style_mode == "auto":
+        style_instruction = f"""【艺术风格决策指示（AI 总导演自主裁决）】:
+你有权作为短视频总导演，根据条目的「核心要点」、「情绪基调」和「受众心理冲击」，从以下开源 `huashu-art-motion` 风格库中自主决策最契合的视觉画风：
+
+{format_style_palette_menu()}
+
+*(参考章节基准推荐: 【{chapter_recommended_id}】{chapter_style_info['name']}，你可沿用亦可自主选择更契合的画风)*
+
+请在输出 JSON 中填入：
+- `art_style_id`: 所选画风的代号 (必须是上述列表中的合法 ID)
+- `art_style_name`: 画风中文名称
+- `art_style_reason`: 1 句话选风理由（说明为什么此画风最能强化本条目的视觉传达）
+并在每个分镜 scene 的 `image_prompt` 尾部，务必注入所选风格的关键词基石！"""
+
+    elif style_mode == "chapter":
+        style_instruction = f"""【艺术风格指定（遵循章节统一规范）】:
+全片必须严格采用章节统一画风：
+- 风格 ID: {chapter_recommended_id}
+- 风格名称: {chapter_style_info['name']}
+- 美学特征: {chapter_style_info['description']}
+- 提示词基石: {chapter_style_info['keywords']}
+在输出 JSON 中填入 art_style_id: "{chapter_recommended_id}", art_style_name: "{chapter_style_info['name']}", 并将提示词基石融入所有分镜的 image_prompt。"""
+
+    else:
+        chosen_style = get_style_recipe(style_mode)
+        style_instruction = f"""【艺术风格强制指定】:
+本条目强制指定画风为：
+- 风格 ID: {style_mode}
+- 风格名称: {chosen_style['name']}
+- 美学特征: {chosen_style['description']}
+- 提示词基石: {chosen_style['keywords']}
+在输出 JSON 中填入 art_style_id: "{style_mode}", art_style_name: "{chosen_style['name']}", 并将提示词基石融入所有分镜的 image_prompt。"""
 
     return f"""请将以下条目转化为 30 秒高性价比人生指南短视频分镜脚本：
 
@@ -134,10 +209,7 @@ def build_user_prompt(entry: Dict[str, Any]) -> str:
 【证据等级】: {evidence_grade} 级
 【补充备注】: {notes}
 
-【推荐视觉风格】:
-- 风格 ID: {style_id}
-- 风格名称: {style_info['name']}
-- 风格美学特征: {style_info['description']}
-- 提示词基石: {style_info['keywords']}
+{style_instruction}
 
 请严格输出指定 JSON 格式，标题统一命名为："{chapter_title}之{item_title}"。"""
+

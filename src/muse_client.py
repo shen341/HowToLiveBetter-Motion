@@ -22,6 +22,7 @@ from src.prompt_builder import (
     STYLE_RECIPES,
     build_system_prompt,
     build_user_prompt,
+    get_style_recipe,
     recommend_style_for_entry,
 )
 
@@ -39,13 +40,18 @@ class MuseClient:
         else:
             self.client = None
 
-    def generate_script(self, entry: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate a 30-second structured storyboard JSON using muse-spark."""
+    def generate_script(self, entry: Dict[str, Any], style_mode: str = "auto") -> Dict[str, Any]:
+        """Generate a 30-second structured storyboard JSON using muse-spark.
+        
+        Args:
+            entry: Entry data dictionary.
+            style_mode: 'auto' (AI decides), 'chapter' (by chapter), or specific style ID.
+        """
         if self.mock:
-            return self._mock_script_generation(entry)
+            return self._mock_script_generation(entry, style_mode=style_mode)
 
         system_prompt = build_system_prompt()
-        user_prompt = build_user_prompt(entry)
+        user_prompt = build_user_prompt(entry, style_mode=style_mode)
 
         try:
             response = self.client.chat.completions.create(
@@ -57,10 +63,10 @@ class MuseClient:
                 temperature=0.4
             )
             raw_content = response.choices[0].message.content
-            return self._clean_and_parse_json(raw_content, entry)
+            return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode)
         except Exception as e:
             print(f"⚠️ Live muse-spark error: {e}. Falling back to rule-based storyboard...")
-            return self._mock_script_generation(entry)
+            return self._mock_script_generation(entry, style_mode=style_mode)
 
     def generate_image(self, prompt: str, output_path: str, style_id: str = "25_ghibli") -> str:
         """Generate a real 1024x1792 vertical image using muse-image."""
@@ -98,7 +104,7 @@ class MuseClient:
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         return output_path
 
-    def _clean_and_parse_json(self, raw_content: str, entry: Dict[str, Any]) -> Dict[str, Any]:
+    def _clean_and_parse_json(self, raw_content: str, entry: Dict[str, Any], style_mode: str = "auto") -> Dict[str, Any]:
         """Strip markdown fences and parse JSON robustly with multiple fallbacks."""
         clean = raw_content.strip()
         if clean.startswith("```"):
@@ -106,28 +112,48 @@ class MuseClient:
             clean = re.sub(r"\s*```$", "", clean)
         clean = clean.strip()
 
+        obj = None
         # 1. Direct parse attempt
         try:
-            return json.loads(clean)
+            obj = json.loads(clean)
         except Exception:
             pass
 
         # 2. Try decoding from every '{' occurrence
-        decoder = json.JSONDecoder()
-        for idx in range(len(clean)):
-            if clean[idx] == '{':
-                try:
-                    obj, _ = decoder.raw_decode(clean[idx:])
-                    if isinstance(obj, dict) and ("scenes" in obj or "entry_id" in obj):
-                        return obj
-                except Exception:
-                    continue
+        if not obj:
+            decoder = json.JSONDecoder()
+            for idx in range(len(clean)):
+                if clean[idx] == '{':
+                    try:
+                        cand, _ = decoder.raw_decode(clean[idx:])
+                        if isinstance(cand, dict) and ("scenes" in cand or "entry_id" in cand):
+                            obj = cand
+                            break
+                    except Exception:
+                        continue
+
+        if isinstance(obj, dict):
+            # Validate and normalize style fields
+            style_id = obj.get("art_style_id", "")
+            if not style_id or style_id not in STYLE_RECIPES:
+                if style_mode in STYLE_RECIPES:
+                    style_id = style_mode
+                elif style_mode == "chapter":
+                    style_id = recommend_style_for_entry(entry.get("chapter_index", 1))
+                else:
+                    style_id = recommend_style_for_entry(entry.get("chapter_index", 1))
+            recipe = get_style_recipe(style_id)
+            obj["art_style_id"] = style_id
+            obj["art_style_name"] = recipe["name"]
+            if not obj.get("art_style_reason"):
+                obj["art_style_reason"] = "AI 深度理解内容语义与情绪基调自主决策"
+            return obj
 
         # 3. Fallback
         print("⚠️ Could not parse JSON from model output, using structured fallback.")
-        return self._mock_script_generation(entry)
+        return self._mock_script_generation(entry, style_mode=style_mode)
 
-    def _mock_script_generation(self, entry: Dict[str, Any]) -> Dict[str, Any]:
+    def _mock_script_generation(self, entry: Dict[str, Any], style_mode: str = "auto") -> Dict[str, Any]:
         """Generate a realistic fallback storyboard conforming to huashu-art-motion standards."""
         chapter_index = entry.get("chapter_index", 1)
         chapter_title = entry.get("chapter_title", "生活指南")
@@ -138,8 +164,28 @@ class MuseClient:
         benefit_desc = entry.get("benefit_desc", "显著降低风险")
         evidence_grade = entry.get("evidence_grade", "A")
 
-        style_id = recommend_style_for_entry(chapter_index)
-        style_info = STYLE_RECIPES.get(style_id, STYLE_RECIPES["25_ghibli"])
+        if style_mode in STYLE_RECIPES:
+            style_id = style_mode
+            style_reason = f"用户手动指定风格【{style_id}】"
+        elif style_mode == "chapter":
+            style_id = recommend_style_for_entry(chapter_index)
+            style_reason = "依据章节类别规则映射"
+        else:
+            # Autonomous AI heuristic based on chapter & topic
+            if chapter_index in (5, 8, 9, 11, 12, 15):
+                style_id = "y2_vox"
+                style_reason = "AI 识别到条目涉及经济规则、法律红线与防骗，选用 Vox 调查剪报风强化档案警示感"
+            elif chapter_index in (3, 4, 6, 23):
+                style_id = "y1_kurzgesagt"
+                style_reason = "AI 识别到条目涉及精力机制与科学拆解，选用 Kurzgesagt 扁平科普矢量风增强明晰度"
+            elif chapter_index in (7, 10, 17, 18, 22, 29):
+                style_id = "24_hopper"
+                style_reason = "AI 识别到条目涉及现代都市生活与人际压力，选用霍珀现实主义风传达沉思质感"
+            else:
+                style_id = "25_ghibli"
+                style_reason = "AI 识别到条目涉及生命健康与日常守护，选用吉卜力手绘风传递温润治愈感"
+
+        style_info = get_style_recipe(style_id)
         video_title = f"{chapter_title}之{item_title}"
 
         return {
@@ -148,6 +194,7 @@ class MuseClient:
             "target_duration_sec": 28,
             "art_style_id": style_id,
             "art_style_name": style_info["name"],
+            "art_style_reason": style_reason,
             "color_palette": ["#1A365D", "#E2E8F0", "#319795", "#ED8936"],
             "narration_text_full": f"高性价比人生第一条：{item_title}。{plain_text}。{cost_desc}，换来的是{benefit_desc}。这有{evidence_grade}级权威证据，记得转给在乎的人！",
             "scenes": [

@@ -1,12 +1,12 @@
 {
-  "export_time": "2026-10-11T14:31:49.745758",
+  "export_time": "2026-10-11T14:47:44.109169",
   "total_entries": 677,
   "status_summary": {
+    "Completed": 1,
     "Media_Generated": 1,
-    "Pending": 676,
+    "Pending": 675,
     "Script_Generated": 0,
     "Video_Assembled": 0,
-    "Completed": 0,
     "Failed": 0
   },
   "chapters": [
@@ -14,7 +14,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 0
+      "completed_items": 1
     },
     {
       "chapter_index": 2,
@@ -223,9 +223,9 @@
       "item_index": 1,
       "title": "系安全带，前排后排都系",
       "evidence_grade": "A",
-      "status": "Media_Generated",
+      "status": "Completed",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_001_不要早死之系安全带，前排后排都系.mp4",
-      "updated_at": "2026-10-11T14:31:49.731740"
+      "updated_at": "2026-10-11T14:39:16.100728"
     },
     {
       "id": "01_002",
@@ -1653,9 +1653,9 @@
       "item_index": 1,
       "title": "关掉所有自动续费，改为到期手动续",
       "evidence_grade": "C",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:22.617145"
+      "updated_at": "2026-10-11T14:47:44.094868"
     },
     {
       "id": "05_002",

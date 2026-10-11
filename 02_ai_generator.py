@@ -37,7 +37,8 @@ def process_entry(
     tts_client: TTSClient,
     conn,
     progress_path: str,
-    force: bool = False
+    force: bool = False,
+    style_mode: str = "auto"
 ) -> bool:
     """Process a single entry: generate storyboard script, visual assets, and synchronized TTS speech."""
     entry_id = entry["id"]
@@ -54,8 +55,8 @@ def process_entry(
 
     # 1. 生成分镜脚本 (调用 muse-spark 或 mock)
     try:
-        print("🧠 步骤 1/3: 调用大模型生成结构化分镜脚本与旁白文案...")
-        script_data = client.generate_script(entry)
+        print(f"🧠 步骤 1/3: 调用大模型生成结构化分镜脚本 (风格模式: {style_mode})...")
+        script_data = client.generate_script(entry, style_mode=style_mode)
 
         # 确保视频标题格式统一规范
         expected_title_prefix = f"{chapter_title}之"
@@ -67,7 +68,8 @@ def process_entry(
             json.dump(script_data, f, ensure_ascii=False, indent=2)
         print(f"✅ 分镜脚本落盘: {storyboard_path}")
         print(f"   • 视频标题: {script_data.get('video_title')}")
-        print(f"   • 选定艺术风格: {script_data.get('art_style_name')} ({script_data.get('art_style_id')})")
+        print(f"   • 选定艺术画风: {script_data.get('art_style_name')} ({script_data.get('art_style_id')})")
+        print(f"   • 风格决策依据: {script_data.get('art_style_reason', 'AI 深度理解内容语义自主决策')}")
         print(f"   • 分镜场景数: {len(script_data.get('scenes', []))} 幕")
         print(f"   • 完整旁白: {script_data.get('narration_text_full')[:50]}...")
 
@@ -161,6 +163,12 @@ def main():
     parser.add_argument("--limit", type=int, default=1, help="Maximum number of entries to process (default: 1)")
     parser.add_argument("--force", action="store_true", help="Force re-generation even if status is not Pending")
     parser.add_argument("--mock", action="store_true", help="Force mock generator mode without API calls")
+    parser.add_argument(
+        "--style",
+        type=str,
+        default="auto",
+        help="Visual art style mode: 'auto' (AI autonomous choice, default), 'chapter' (chapter rule-based), or specific ID (25_ghibli, y1_kurzgesagt, y2_vox, 13_pop, 24_hopper, 17_ink, 14_pixel)"
+    )
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
@@ -176,6 +184,7 @@ def main():
     else:
         print(f"🔌 当前已连接 Muse AI API: {client.base_url}")
     print(f"🎙️ 当前已就绪 TTS 语音服务: {tts_client.api_url} [音色: {tts_client.voice}]")
+    print(f"🎨 画风配置策略: [{args.style}] ('auto' 为 AI 自主语义决策)")
 
     if args.entry_id:
         target_entry = get_entry(conn, args.entry_id)
@@ -195,7 +204,15 @@ def main():
     success_count = 0
 
     for entry in entries_to_process:
-        success = process_entry(entry, client, tts_client, conn, args.progress_path, force=args.force)
+        success = process_entry(
+            entry,
+            client,
+            tts_client,
+            conn,
+            args.progress_path,
+            force=args.force,
+            style_mode=args.style
+        )
         if success:
             success_count += 1
 
