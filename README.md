@@ -27,19 +27,38 @@
 
 ---
 
+## 📚 核心文档导航 (Documentation Hub)
+
+- 📖 **[运用手册与运维指南 (Operations Manual)](file:///c:/develop/HowToLiveBetter-Motion/docs/OPERATIONS_MANUAL.md)**：包含前置环境安装、SOP 操作命令、画风调度、BGM 定制、SQLite 运维及发布前质检清单。
+- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 6 项关键 ADR，详细阐述双轨状态、画风理念、Pillow 渲染、以声定景、弱音混音与 AI 自主选风的决策理由。
+- 📋 **[项目路线图与待办任务 (TODO & Roadmap)](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)**：记录已完成里程碑、近期高优先任务（封面卡片/SRT字幕/批量限流）及远期规划。
+- 📐 **[系统架构设计与技术选型 (System Design)](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md)**：包含数据 Schema、MoviePy 架构与提示词编译工程标准。
+
+---
+
 ## 📂 项目工程目录
 
 ```
 HowToLiveBetter-Motion/
 ├── .env.example               # 环境变量配置模板 (Muse API & TTS 配置)
 ├── .gitignore                 # Git 忽略配置
-├── README.md                  # 项目全景使用指南
+├── README.md                  # 项目总览说明
 ├── requirements.txt           # Python 依赖清单
-├── pipeline.db                # SQLite 状态数据库 (运行后自动创建)
+├── pipeline.db                # SQLite 状态数据库 (本地自动生成)
 ├── progress.json              # 全局进度追踪快照 (677 条完整状态)
 │
-├── docs/                      # 架构与设计规范
-│   └── system_design.md       # 系统架构设计、Schema 与技术选型文档
+├── docs/                      # 核心文档中枢
+│   ├── OPERATIONS_MANUAL.md   # [核心运用手册] 全流程操作与运维指南
+│   ├── TODO.md                # [任务清单] 路线图与待办 Backlog
+│   ├── system_design.md       # 系统架构设计、Schema 与技术选型文档
+│   └── decisions/             # [ADR 架构决策记录]
+│       ├── README.md          # ADR 索引与状态表
+│       ├── ADR-001-Dual-State-Persistence-SQLite-and-JSON.md
+│       ├── ADR-002-Huashu-Art-Motion-Style-Cards-and-Prompt-Engineering.md
+│       ├── ADR-003-MoviePy-and-Pillow-Video-Assembly-Architecture.md
+│       ├── ADR-004-Edge-TTS-Integration-and-Audio-Driven-Timing.md
+│       ├── ADR-005-Custom-BGM-Directory-and-Audibility-Mixing.md
+│       └── ADR-006-Autonomous-Visual-Style-Selection.md
 │
 ├── backgroup_music/           # 自定义背景音乐库 (放入任意 .mp3 音乐)
 │   ├── 01_country_music.mp3
@@ -187,11 +206,14 @@ python 03_video_assembler.py --entry-id 01_001 --bgm backgroup_music/01_country_
 
 ---
 
-## 🎨 视觉风格配方卡（huashu-art-motion 深度映射）
+## 🎨 视觉风格配方卡（huashu-art-motion 深度映射，支持 `--style auto` 智能自主决策）
 
 | 风格 ID | 风格名称 | 适用领域 | 美学特征 |
 |---|---|---|---|
 | `25_ghibli` | 吉卜力暖调手绘风 | 意外预防、家庭安全、身体健康 | 温暖阳光漫射、质朴生活细节、温润治愈手绘水彩 |
 | `y2_vox` | Vox 调查剪报风 | 法律红线、金融防骗、合同维权 | 真实纸纹拼贴、红线指引、高对比度黑白档案感 |
-| `y1_kurzgesagt` | Kurzgesagt 扁平科普 | 精力管理、时间分配、常识机制 | 鲜明纯色平涂色块、几何轮廓、无复杂蓝紫渐变 |
+| `y1_kurzgesagt` | Kurzgesagt 扁平科普 | 精力管理、时间分配、科学机制 | 鲜明纯色平涂色块、几何轮廓、无复杂蓝紫渐变 |
+| `13_pop` | 利希滕斯坦波普风 | 反直觉痛点、消费陷阱、人际冲突 | 本戴点网格纹理、粗重黑色描边、经典美漫原色冲击 |
 | `24_hopper` | 霍珀现实主义风 | 情绪压力、重大变故、人生哲学 | 斜射几何光块、市井现实主义、克制沉静构图 |
+| `17_ink` | 新中式东方水墨风 | 处世哲学、心态调适、中式养生 | 水墨晕染留白、淡雅矿物设色、宁静从容意境 |
+| `14_pixel` | 8-Bit 像素复古游戏风| 习惯打卡、微小行动积累、目标达成 | 精致复古像素点阵、街机闯关成就感、轻松趣味 |
