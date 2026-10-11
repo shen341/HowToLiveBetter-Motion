@@ -29,6 +29,7 @@ from src.db import (
 )
 from src.cover_generator import CoverGenerator
 from src.muse_client import MuseClient
+from src.srt_generator import SRTGenerator
 from src.tts_client import TTSClient
 
 
@@ -39,7 +40,8 @@ def process_entry(
     conn,
     progress_path: str,
     force: bool = False,
-    style_mode: str = "auto"
+    style_mode: str = "auto",
+    scenes_count: int = 6
 ) -> bool:
     """Process a single entry: generate storyboard script, visual assets, and synchronized TTS speech."""
     entry_id = entry["id"]
@@ -56,8 +58,8 @@ def process_entry(
 
     # 1. 生成分镜脚本 (调用 muse-spark 或 mock)
     try:
-        print(f"🧠 步骤 1/3: 调用大模型生成结构化分镜脚本 (风格模式: {style_mode})...")
-        script_data = client.generate_script(entry, style_mode=style_mode)
+        print(f"🧠 步骤 1/3: 调用大模型生成结构化分镜脚本 (画风: {style_mode} | 幕数: {scenes_count} 幕)...")
+        script_data = client.generate_script(entry, style_mode=style_mode, scene_count=scenes_count)
 
         # 确保视频标题格式统一规范
         expected_title_prefix = f"{chapter_title}之"
@@ -150,6 +152,14 @@ def process_entry(
         with open(storyboard_path, "w", encoding="utf-8") as f:
             json.dump(script_data, f, ensure_ascii=False, indent=2)
 
+        # 生成独立分镜 SRT 字幕文件
+        raw_srt_path = os.path.join(asset_dir, "subtitles.srt")
+        try:
+            SRTGenerator().export_srt(script_data, raw_srt_path)
+            print(f"   📝 独立分镜 SRT 字幕生成: {raw_srt_path}")
+        except Exception as e:
+            print(f"   ⚠️ SRT 字幕导出轻微异常 (不阻塞主流程): {e}")
+
         # 3. 更新状态为 Media_Generated
         print("💾 步骤 3/3: 更新条目状态至数据库与进度快照...")
         update_status(
@@ -185,6 +195,13 @@ def main():
         default="auto",
         help="Visual art style mode: 'auto' (AI autonomous choice, default), 'chapter' (chapter rule-based), or specific ID (25_ghibli, y1_kurzgesagt, y2_vox, 13_pop, 24_hopper, 17_ink, 14_pixel)"
     )
+    parser.add_argument(
+        "--scenes",
+        type=int,
+        default=6,
+        choices=[4, 6, 8],
+        help="Number of storyboard scenes (default: 6 for Golden 6 Scenes)"
+    )
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
@@ -201,6 +218,7 @@ def main():
         print(f"🔌 当前已连接 Muse AI API: {client.base_url}")
     print(f"🎙️ 当前已就绪 TTS 语音服务: {tts_client.api_url} [音色: {tts_client.voice}]")
     print(f"🎨 画风配置策略: [{args.style}] ('auto' 为 AI 自主语义决策)")
+    print(f"🎬 场景分镜规范: [{args.scenes} 幕] (黄金叙事脉冲节奏)")
 
     if args.entry_id:
         target_entry = get_entry(conn, args.entry_id)
@@ -227,7 +245,8 @@ def main():
             conn,
             args.progress_path,
             force=args.force,
-            style_mode=args.style
+            style_mode=args.style,
+            scenes_count=args.scenes
         )
         if success:
             success_count += 1

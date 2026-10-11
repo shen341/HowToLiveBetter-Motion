@@ -87,25 +87,27 @@ def recommend_style_for_entry(chapter_index: int) -> str:
         return "25_ghibli"
 
 
-def build_system_prompt() -> str:
-    """System prompt embedding huashu-art-motion principles for muse-spark."""
-    return """你是一位顶级短视频总导演兼视觉分镜大师，精通开源动画项目 `huashu-art-motion` 的美学和解说语法。
-你的任务是将提供的高性价比人生指南条目，转化为一份极具观赏性、节奏紧凑、绝无低质 AI 感的 30 秒大众科普短视频分镜脚本。
+def build_system_prompt(scene_count: int = 6) -> str:
+    """System prompt embedding huashu-art-motion principles for muse-spark with Golden 6-scene rhythm."""
+    return f"""你是一位顶级短视频总导演兼视觉分镜大师，精通开源动画项目 `huashu-art-motion` 的美学和解说语法。
+你的任务是将提供的高性价比人生指南条目，转化为一份极具观赏性、节奏紧凑、绝无低质 AI 感的 28~32 秒大众科普短视频分镜脚本。
 
 【核心设计铁律】
-1. **时长控制**：全片时长严格控制在 25 ~ 30 秒以内，适合抖音、小红书和视频号短视频。
-2. **视频标题**：必须遵循格式 `"{章节名}之{小条目标题}"`。
+1. **时长控制**：全片时长严格控制在 28 ~ 32 秒以内，非常适合抖音、小红书和视频号短视频。
+2. **视频标题**：必须遵循格式 `"[章节名]之[小条目标题]"`。
 3. **拒斥 AI Slop (防劣质 AI 原则)**：
    - 严禁任何蓝紫霓虹、深紫星空、炫光光球、数据流雨、无脸白模人偶、抽象悬浮几何体！
    - 全片必须锁定单一、统一的高级艺术画风和调和色板。
 4. **镜头里必须有“具体的物与动作”**：
    - 拒绝空洞的符号。必须落在生活场景中具体的实体物件和物理动作上（如系扣安全带、旋紧燃气阀门、电子血压计数字跳动、纸质药盒、窗框限位锁）。
-5. **脉冲式节奏与镜头事件 (Pulse Rhythm)**：
-   - 全片划分 3 到 4 个分镜：
-     * 第 1 镜 (0-4秒 抓眼钩子)：生活场景具体物动作 + 抛出痛点或反直觉事实。
-     * 第 2 镜 (4-12秒 核心论据与颠覆)：核心数据震撼对比、说人话解释。
-     * 第 3 镜 (12-22秒 行动与成本收益)：极低成本 vs 极高收益，权威背书（WHO/国家规章）。
-     * 第 4 镜 (22-28秒 金句定格落定)：具体的行动指令与金句结语。
+5. **黄金 {scene_count} 幕脉冲式叙事节奏 (Golden Multi-Scene Pulse Rhythm)**：
+   - 全片必须严格规划 **{scene_count} 个紧凑分镜**（单镜时长约为 4.0~5.2 秒，拒绝长镜头静止死板，强化连续流动感）：
+     * 第 1 镜 (0-4秒 痛点抓眼钩子)：生活场景具体物动作 + 抛出反直觉痛点。口播约 12~18 字。
+     * 第 2 镜 (4-9秒 认知颠覆展开)：生活全貌展开，指出常见认知误区与真相。口播约 15~20 字。
+     * 第 3 镜 (9-14秒 科学机理与隐形危害)：底层机理拆解，关键指标震撼对比。口播约 15~20 字。
+     * 第 4 镜 (14-19秒 权威证据背书)：国家规章 / WHO / 权威文献数据标签展示。口播约 15~20 字。
+     * 第 5 镜 (19-24秒 极低执行成本与示范)：具体的手部微动作或零成本实施步骤。口播约 15~20 字。
+     * 第 6 镜 (24-29秒 金句定格落定)：明亮开阔的未来生活场景，核心行动金句收尾。口播约 10~15 字。
 6. **核心浮现字 (Kinetic Typography)**：
    - 每一镜提炼 1 个简短有力的屏幕浮现词（2-8字），用于短视频大字冲击，例如“风险降50%”、“后排不系 60%致命”、“成本=0秒”。
 7. **多模态视觉 Prompts 规范**：
@@ -114,44 +116,38 @@ def build_system_prompt() -> str:
 
 【输出格式】
 你必须直接输出严格的 JSON 对象（不要包裹 Markdown 代码块外的废话），其结构如下：
-{
+{{
   "entry_id": "01_001",
   "video_title": "不要早死之系安全带，前排后排都系",
-  "target_duration_sec": 28,
+  "target_duration_sec": 29,
   "art_style_id": "25_ghibli",
   "art_style_name": "吉卜力暖调手绘风",
   "art_style_reason": "条目涉及家庭乘车出行与生命安全，吉卜力暖调手绘能传递珍惜生活、温润治愈的守护感，避免生硬说教",
   "color_palette": ["#...", "#...", "#..."],
   "narration_text_full": "完整旁白文本...",
   "scenes": [
-    {
+    {{
       "scene_index": 1,
-      "time_range": "0.0-4.0",
-      "duration_sec": 4.0,
-      "narration_segment": "分镜口播文本",
+      "time_range": "0.0-4.5",
+      "duration_sec": 4.5,
+      "narration_segment": "分镜口播文本（15字左右精炼短句）",
       "primary_subject": "具象主体（名词）",
       "visual_action": "主体在做什么动作及镜头事件（动词）",
-      "kinetic_typography": {
+      "kinetic_typography": {{
         "text": "浮现核心字",
         "style": "slam_in",
         "position": "center_high"
-      },
+      }},
       "image_prompt": "Detailed English prompt for image generation, 9:16 vertical aspect ratio, including style keywords...",
       "video_motion_prompt": "Camera motion prompt in English..."
-    }
+    }}
   ]
-}
+}}
 """
 
 
-def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto") -> str:
-    """Build user prompt with entry data and dynamic style selection instruction.
-    
-    style_mode can be:
-      - 'auto': AI analyzes entry semantics and autonomously chooses the best style card.
-      - 'chapter': Follows the recommended chapter-level style.
-      - '<style_id>': Forcibly uses a specific style card (e.g. 'y2_vox', '25_ghibli').
-    """
+def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> str:
+    """Build user prompt with entry data, dynamic style selection and scene count."""
     chapter_index = entry.get("chapter_index", 1)
     chapter_title = entry.get("chapter_title", "")
     item_title = entry.get("title", "")
@@ -198,7 +194,7 @@ def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto") -> str:
 - 提示词基石: {chosen_style['keywords']}
 在输出 JSON 中填入 art_style_id: "{style_mode}", art_style_name: "{chosen_style['name']}", 并将提示词基石融入所有分镜的 image_prompt。"""
 
-    return f"""请将以下条目转化为 30 秒高性价比人生指南短视频分镜脚本：
+    return f"""请将以下条目转化为 28~32 秒高性价比人生指南短视频分镜脚本：
 
 【条目编号】: {entry_id}
 【章节】: {chapter_title}
@@ -211,5 +207,9 @@ def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto") -> str:
 
 {style_instruction}
 
+【分镜幕数要求】:
+必须严格规划 **{scene_count} 幕分镜**（黄金六幕叙事曲线：痛点钩子 -> 认知颠覆 -> 机理危害 -> 权威证据 -> 极低成本 -> 行动金句），每镜口播控制在 15~20 字以内短句，节奏紧凑连续流动，拒绝长镜头静止！
+
 请严格输出指定 JSON 格式，标题统一命名为："{chapter_title}之{item_title}"。"""
+
 

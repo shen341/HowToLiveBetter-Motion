@@ -88,39 +88,41 @@ python 01_data_extractor.py --force
 
 ### 步骤 2：大模型分镜、素材与语音生成 (`02_ai_generator.py`)
 
-本步骤调用 `muse-spark` 生成紧凑四幕分镜，调用 `muse-image` 生成 9:16 原画，并调用 Edge-TTS 生成解说音频。
+本步骤调用 `muse-spark` 生成紧凑分镜（**默认黄金 6 幕叙事脉冲曲线**：痛点钩子 -> 认知颠覆 -> 机理危害 -> 权威证据 -> 极低成本 -> 金句定格），调用 `muse-image` 生成 9:16 原画，并调用 Edge-TTS 生成解说音频及自动生成独立 SRT 字幕。
 
 ```powershell
-# 2.1 单条生成（默认 AI 自主选风，最推荐）
+# 2.1 单条生成（默认 AI 自主选风，默认黄金 6 幕，最推荐）
 python 02_ai_generator.py --entry-id 01_001
 
 # 2.2 批量生成待处理的前 3 个条目
 python 02_ai_generator.py --limit 3
 
-# 2.3 强制覆盖重跑已生成条目
+# 2.3 指定分镜幕数（可选 4 幕、6 幕或 8 幕，默认为 6 幕）
+python 02_ai_generator.py --entry-id 01_001 --scenes 6
+
+# 2.4 强制覆盖重跑已生成条目
 python 02_ai_generator.py --entry-id 01_001 --force
 
-# 2.4 离线/模拟测试模式 (不消耗 API 额度，快速验证流程)
+# 2.5 离线/模拟测试模式 (不消耗 API 额度，快速验证流程)
 python 02_ai_generator.py --entry-id 01_001 --mock --force
 ```
 
 - **输出产物**（存放于 `output/raw_assets/{entry_id}/`）：
-  - `cover.png`：[新增] 1080×1920 竖屏高辨识度专属封面卡片（小红书/抖音首选发布首图）。
+  - `cover.png`：1080×1920 竖屏高辨识度专属封面卡片（小红书/抖音首选发布首图）。
+  - `subtitles.srt`：[新增] 标准独立 SRT 字幕文件（分镜精准对齐时间戳）。
   - `storyboard.json`：分镜脚本、Prompt、所选画风与选风理由、精准语音与分镜时长。
-  - `scene_01.png` ~ `scene_04.png`：1024×1792 竖屏原画素材。
-  - `voice_01.mp3` ~ `voice_04.mp3`：各分镜解说音频。
+  - `scene_01.png` ~ `scene_06.png`：1024×1792 竖屏原画素材。
+  - `voice_01.mp3` ~ `voice_06.mp3`：各分镜解说音频。
 
-> 💡 **独立重制封面卡片命令**：
-> 如需单独针对某一条目重新排版渲染封面图，可直接调用独立生成器：
-> ```powershell
-> python -m src.cover_generator --entry-id 01_001
-> ```
+> 💡 **独立重制封面卡片与字幕命令**：
+> - 重新排版渲染封面图：`python -m src.cover_generator --entry-id 01_001`
+> - 重新导出独立 SRT 字幕：`python -m src.srt_generator --entry-id 01_001 [--split]`
 
 ---
 
 ### 步骤 3：影视级视频组装与双轨混音 (`03_video_assembler.py`)
 
-本步骤将图片、运镜动效、转场溶解、黄金分割点文字卡片及 BGM 进行渲染，输出最终 MP4，并自动将发布首图同步复制至交付目录。
+本步骤将图片、运镜动效、转场溶解、黄金分割点文字卡片及 BGM 进行渲染，输出最终 MP4，并自动将发布首图与独立 SRT 字幕同步复制至交付目录。
 
 ```powershell
 # 3.1 合成指定条目的最终成片
@@ -131,11 +133,15 @@ python 03_video_assembler.py --limit 5
 
 # 3.3 强制重新渲染合成
 python 03_video_assembler.py --entry-id 01_001 --force
+
+# 3.4 导出断句级细分字幕（按标点自适应比例切分长句）
+python 03_video_assembler.py --entry-id 01_001 --force --split-srt
 ```
 
 - **输出产物**（存放于 `output/final_videos/`）：
-  - `{entry_id}_{章节名}之{小条目标题}.mp4`：1080×1920 竖屏成片（约 25~35 秒，8~15MB）。
+  - `{entry_id}_{章节名}之{小条目标题}.mp4`：1080×1920 竖屏成片（约 28~32 秒，8~15MB）。
   - `{entry_id}_{章节名}之{小条目标题}_cover.png`：配套的高清专属发布首图。
+  - `{entry_id}_{章节名}之{小条目标题}.srt`：[新增] 配套的标准独立外挂字幕（媒体播放器与剪映自动关联）。
 
 
 ---

@@ -39,6 +39,7 @@
 
 ### Milestone 4: 批量生产与平台化适配 (Phase 4 进展)
 - [x] **TASK-4.1 短视频专属封面卡片自动生成 (Cover Card Generator)**：实现 1080×1920 竖屏高辨识度首图生成引擎（`src/cover_generator.py`），支持大字标题、核心痛点钩子、3 维度权威与成本徽章，并在分镜与合成流水线中全自动触发。
+- [x] **TASK-4.2 导出独立 SRT 字幕文件 (Standalone SRT Subtitle Generator)**：实现标准 SRT 导出引擎（`src/srt_generator.py`），根据 0.5s 交叉溶解与音频绝对时间轴精准生成分镜级/断句级字幕，自动落盘并同步至 `output/raw_assets/{entry_id}/subtitles.srt` 与 `output/final_videos/{clean_name}.srt`，便于剪映二次精修与播放器直接外挂。
 
 ---
 
@@ -47,7 +48,7 @@
 | 任务编号 | 任务标题 | 优先级 | 状态 | 估算工时 | 详细说明与验收标准 (Acceptance Criteria) |
 |---|---|---|---|---|---|
 | **TASK-4.1** | **短视频专属封面卡片自动生成 (Cover Card Generator)** | P1 (高) | **已完成** | 1.5 天 | • 为每个条目生成 1 张 1080×1920 竖屏高辨识度静态封面（可作为小红书/抖音发布首图）。<br>• 居中突出超大章节主题与小条目标题，标注“证据等级 A 级”、“0 成本”徽章。<br>• 产物保存为 `output/raw_assets/{entry_id}/cover.png` 及 `output/final_videos/{id}_cover.png`。 |
-| **TASK-4.2** | **导出独立 SRT 字幕文件** | P1 (高) | 待排期 | 0.5 天 | • 根据各分镜的精确时间戳与文本，自动输出标准的 `.srt` 字幕文件到 `output/final_videos/{entry_id}.srt`。<br>• 方便创作者在剪映/快剪辑中二次精修，或直接上传平台作为软字幕。 |
+| **TASK-4.2** | **导出独立 SRT 字幕文件 (Standalone SRT Subtitles)** | P1 (高) | **已完成** | 0.5 天 | • 根据各分镜的精确时间戳与文本，自动输出标准的 `.srt` 字幕文件到 `output/final_videos/{clean_name}.srt` 与 `output/raw_assets/{entry_id}/subtitles.srt`。<br>• 支持分镜级精准时间轴（1:1 匹配语音）与 `--split` 断句级自适应比例切分。<br>• 方便创作者在剪映/快剪辑中二次精修，或直接上传平台作为软字幕。 |
 | **TASK-4.3** | **批量生成速率控制与指数退避重试 (Rate Limiting & Backoff)** | P2 (中) | 待排期 | 1 天 | • 在执行 `--limit 50` 大批量生成时，针对 Muse API 与 Edge-TTS 添加每分钟请求数限制（Token Bucket）。<br>• 遇到 429 或 503 网络抖动时自动进行 3 次指数退避重试（Backoff: 2s $\to$ 4s $\to$ 8s），防止整批任务中断。 |
 | **TASK-4.4** | **社交平台码率自适应压缩 (Platform Preset Compression)** | P2 (中) | 待排期 | 1 天 | • 小红书对大于 50MB 视频易二次压缩导致画质劣化。<br>• 支持 `--preset xhs/douyin/wechat` 参数，使用 ffmpeg CRF=20~22 与 AAC 128k 自动将 30 秒成片控制在 10~20MB 最优画质体积区间。 |
 

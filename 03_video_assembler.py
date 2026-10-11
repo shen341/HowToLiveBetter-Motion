@@ -35,7 +35,7 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r'[\\/*?:"<>|,\s]+', "_", name).strip("_")
 
 
-def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: str, custom_bgm: str = None) -> bool:
+def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: str, custom_bgm: str = None, split_srt: bool = False) -> bool:
     """Assemble final MP4 for a single entry."""
     entry_id = entry["id"]
     chapter_title = entry["chapter_title"]
@@ -105,6 +105,18 @@ def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: st
             except Exception:
                 pass
 
+        # 同步/生成成片配套的独立 SRT 字幕文件
+        final_srt = os.path.join(OUTPUT_FINAL_VIDEOS_DIR, f"{clean_name}.srt")
+        raw_srt = os.path.join(raw_assets_dir, "subtitles.srt")
+        try:
+            from src.srt_generator import SRTGenerator
+            SRTGenerator().export_srt(storyboard, final_srt, split_sentences=split_srt)
+            print(f"   • 同步独立字幕: {final_srt}")
+            if not os.path.exists(raw_srt):
+                SRTGenerator().export_srt(storyboard, raw_srt, split_sentences=split_srt)
+        except Exception as e:
+            print(f"   ⚠️ 独立字幕生成轻微异常: {e}")
+
         # 更新数据库状态为 Completed
         update_status(
             conn,
@@ -130,6 +142,7 @@ def main():
     parser.add_argument("--limit", type=int, default=1, help="Max entries to assemble (default: 1)")
     parser.add_argument("--force", action="store_true", help="Force re-assemble even if already completed")
     parser.add_argument("--bgm", type=str, default=None, help="Path to custom BGM audio file")
+    parser.add_argument("--split-srt", action="store_true", help="Split scene narration into sub-sentence clauses in SRT export")
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
@@ -154,7 +167,7 @@ def main():
     print(f"📋 即将合成 {len(entries)} 个视频...")
     success_cnt = 0
     for entry in entries:
-        if assemble_one(entry, assembler, conn, args.progress_path, custom_bgm=args.bgm):
+        if assemble_one(entry, assembler, conn, args.progress_path, custom_bgm=args.bgm, split_srt=args.split_srt):
             success_cnt += 1
 
     print("-" * 65)
