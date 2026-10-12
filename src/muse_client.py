@@ -12,11 +12,14 @@ from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
 
 from src.config import (
+    API_MAX_RETRIES,
+    API_RETRY_DELAY,
     MODEL_IMAGE,
     MODEL_TEXT,
     MODEL_VIDEO,
     MUSE_API_KEY,
     MUSE_BASE_URL,
+    RATE_LIMIT_MUSE_RPM,
 )
 from src.prompt_builder import (
     STYLE_RECIPES,
@@ -25,15 +28,29 @@ from src.prompt_builder import (
     get_style_recipe,
     recommend_style_for_entry,
 )
+from src.rate_limiter import TokenBucketLimiter, retry_with_backoff
 
 
 class MuseClient:
-    """Client for Muse AI API supporting script, image, and video generation."""
+    """Client for Muse AI API supporting script, image, and video generation with rate limiting and exponential backoff."""
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, mock: bool = False):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        mock: bool = False,
+        rate_limit_rpm: Optional[int] = None,
+        max_retries: Optional[int] = None,
+        retry_delay: Optional[float] = None,
+    ):
         self.api_key = api_key or MUSE_API_KEY or os.getenv("MUSE_API_KEY", "")
         self.base_url = base_url or MUSE_BASE_URL or os.getenv("MUSE_BASE_URL", "https://yourselfai.org/muse/v1")
         self.mock = mock or not bool(self.api_key)
+        self.rate_limit_rpm = rate_limit_rpm if rate_limit_rpm is not None else RATE_LIMIT_MUSE_RPM
+        self.max_retries = max_retries if max_retries is not None else API_MAX_RETRIES
+        self.retry_delay = retry_delay if retry_delay is not None else API_RETRY_DELAY
+
+        self.limiter = TokenBucketLimiter(rate_per_minute=self.rate_limit_rpm)
 
         if not self.mock:
             self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
@@ -54,8 +71,8 @@ class MuseClient:
         system_prompt = build_system_prompt(scene_count=scene_count)
         user_prompt = build_user_prompt(entry, style_mode=style_mode, scene_count=scene_count)
 
-        try:
-            response = self.client.chat.completions.create(
+        def _do_generate_script():
+            return self.client.chat.completions.create(
                 model=MODEL_TEXT,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -63,10 +80,19 @@ class MuseClient:
                 ],
                 temperature=0.4
             )
+
+        try:
+            response = retry_with_backoff(
+                _do_generate_script,
+                max_retries=self.max_retries,
+                initial_delay=self.retry_delay,
+                service_name="Muse-Spark",
+                limiter=self.limiter,
+            )
             raw_content = response.choices[0].message.content
             return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode, scene_count=scene_count)
         except Exception as e:
-            print(f"⚠️ Live muse-spark error: {e}. Falling back to rule-based storyboard...")
+            print(f"⚠️ Live muse-spark failed after {self.max_retries} attempts: {e}. Falling back to rule-based storyboard...")
             return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count)
 
     def generate_image(self, prompt: str, output_path: str, style_id: str = "25_ghibli") -> str:
@@ -76,7 +102,7 @@ class MuseClient:
         if self.mock:
             return self._mock_image_generation(prompt, output_path, style_id)
 
-        try:
+        def _do_generate_image():
             response = self.client.images.generate(
                 model=MODEL_IMAGE,
                 prompt=prompt,
@@ -94,10 +120,18 @@ class MuseClient:
                     f.write(resp.content)
             else:
                 raise ValueError("No image data (b64 or url) returned from API response.")
-
             return output_path
+
+        try:
+            return retry_with_backoff(
+                _do_generate_image,
+                max_retries=self.max_retries,
+                initial_delay=self.retry_delay,
+                service_name="Muse-Image",
+                limiter=self.limiter,
+            )
         except Exception as e:
-            print(f"⚠️ Live image generation warning: {e}. Falling back to styled placeholder...")
+            print(f"⚠️ Live image generation failed after {self.max_retries} attempts: {e}. Falling back to styled placeholder...")
             return self._mock_image_generation(prompt, output_path, style_id)
 
     def generate_video(self, prompt: str, output_path: str, image_path: Optional[str] = None) -> str:

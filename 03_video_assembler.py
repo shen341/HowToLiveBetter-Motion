@@ -24,8 +24,15 @@ except (AttributeError, io.UnsupportedOperation):
 
 print = functools.partial(print, flush=True)
 
-from src.assembler import VideoAssembler
-from src.config import OUTPUT_FINAL_VIDEOS_DIR
+from src.assembler import (
+    PLATFORM_PRESETS,
+    VideoAssembler,
+    get_platform_preset,
+)
+from src.config import (
+    DEFAULT_PLATFORM_PRESET,
+    OUTPUT_FINAL_VIDEOS_DIR,
+)
 from src.db import (
     DEFAULT_DB_PATH,
     DEFAULT_PROGRESS_PATH,
@@ -49,6 +56,7 @@ def assemble_one(
     progress_path: str,
     custom_bgm: str = None,
     split_srt: bool = False,
+    platform_preset: str = DEFAULT_PLATFORM_PRESET,
     current_index: int = 1,
     total_count: int = 1
 ) -> bool:
@@ -88,7 +96,8 @@ def assemble_one(
             entry_data=entry,
             storyboard=storyboard,
             output_path=output_mp4_path,
-            bgm_path=custom_bgm
+            bgm_path=custom_bgm,
+            platform_preset=platform_preset,
         )
 
         elapsed = time.time() - start_time
@@ -160,12 +169,23 @@ def main():
     parser.add_argument("--force", action="store_true", help="Force re-assemble even if already completed")
     parser.add_argument("--bgm", type=str, default=None, help="Path to custom BGM audio file")
     parser.add_argument("--split-srt", action="store_true", help="Split scene narration into sub-sentence clauses in SRT export")
+    parser.add_argument(
+        "--preset",
+        type=str,
+        default=DEFAULT_PLATFORM_PRESET,
+        choices=list(PLATFORM_PRESETS.keys()),
+        help="Social platform encoding preset: 'default' (通用), 'xhs' (小红书抗二压), 'douyin' (抖音高清), 'wechat' (微信秒开), 'bilibili' (B站高码率)"
+    )
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
 
     conn = get_connection(args.db_path)
-    assembler = VideoAssembler()
+    assembler = VideoAssembler(default_preset=args.preset)
+
+    preset_info = get_platform_preset(args.preset)
+    print(f"⚙️ 目标平台预设: [{preset_info['name']}] (CRF={preset_info['crf']}, MaxRate={preset_info['maxrate']}, Audio={preset_info['audio_bitrate']})")
+    print(f"   • 说明: {preset_info['description']}")
 
     if args.entry_id:
         target_entry = get_entry(conn, args.entry_id)
@@ -194,6 +214,7 @@ def main():
             args.progress_path,
             custom_bgm=args.bgm,
             split_srt=args.split_srt,
+            platform_preset=args.preset,
             current_index=idx,
             total_count=total_count
         ):

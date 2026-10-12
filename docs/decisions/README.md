@@ -15,6 +15,9 @@
 | [ADR-007](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-007-Cover-Card-Generation-Architecture.md) | 竖屏高辨识度专属封面卡片自动生成架构 (Cover Card) | **Accepted** | 2026-10-11 | 解决短视频首图 CTR 痛点，实现 1080×1920 竖屏卡片生成（大字标题、痛点钩子、3 维度权威标签），全自动两级触发。 |
 | [ADR-008](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-008-Golden-6-Scenes-Narrative-Pulse-Rhythm.md) | 黄金 6 幕叙事脉冲曲线与分镜节律升级 | **Accepted** | 2026-10-11 | 告别 4 幕单张静态图展示过久（7~9s）的呆滞幻灯片感，确立 6 幕紧凑剪辑（单镜头 4.0~5.2s），形成 6 阶段完整论证闭环。 |
 | [ADR-009](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-009-Standalone-SRT-Subtitle-Architecture.md) | 独立外挂 SRT 字幕导出引擎与音频时间轴绝对对齐架构 | **Accepted** | 2026-10-11 | 契合 MoviePy 叠化转场机制精准计算毫秒级时间戳，支持分镜级与断句级双模式，实现交付目录同名 `.srt` 软硬字幕统一。 |
+| [ADR-010](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-010-I2V-Hybrid-Motion-Architecture.md) | 图生视频 (I2V) 混合动态微动架构与演进路线 | **Proposed** | 2026-10-12 | 确立首帧原画锁定画风、关键幕 I2V 物理微动、自适应尾帧定格延展与分级降级的混合视频演进架构。 |
+| [ADR-011](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-011-Rate-Limiting-and-Exponential-Backoff.md) | 令牌桶速率控制与多级指数退避重试容灾架构 | **Accepted** | 2026-10-12 | 纯 Python 实现线程安全 TokenBucket 限制发包并发，智能分类 429/503/超时异常执行 2s->4s->8s 指数退避，保障大批量跑批稳定性。 |
+| [ADR-012](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-012-Social-Platform-Bitrate-Presets.md) | 社交平台码率自适应压缩与流式秒开预设架构 | **Accepted** | 2026-10-12 | 建立小红书抗二压、抖音高清、微信秒开等 CRF+VBV 平台矩阵预设，注入 movflags=+faststart 元数据实现移动端流式秒开。 |
 
 ## ADR 生命周期与规范
 

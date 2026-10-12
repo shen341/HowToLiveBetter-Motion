@@ -439,3 +439,89 @@ TTS 音频时长 (T_audio) ───► 增加呼吸缓冲 (Δt = 0.4~0.6s) ─�
   - **分镜级（默认）**：1:1 精确同步画面文字；
   - **断句级（`--split` / `--split-srt`）**：对长句按标点符号（`。`、`！`、`，`）基于字数权重自适应拆分，适合剪映逐句高亮跳字动画。
 - **产物位置**：`output/raw_assets/{id}/subtitles.srt` 与 `output/final_videos/{clean_name}.srt`（与 MP4 同名，播放器自动加载）。
+
+---
+
+## 9. 视觉动态演进路线：图生视频 (Image-to-Video, I2V) 混合驱动架构 (Hybrid Motion Architecture)
+
+为了在当前高稳定性、低成本的静态原画流水线基础上，进一步突破二维仿射运镜瓶颈，引入真实物理微动与电影级视差，系统规划了 **图生视频 (Image-to-Video, I2V) 混合驱动演进方案**。
+
+### 9.1 演进背景与矛盾解构
+在音视频工业化批量生成中，存在以下核心矛盾：
+- **纯文生视频 (T2V) 路线的局限**：端到端文生视频在小众艺术画风（如新中式水墨、Vox剪报、波普网点）上极易发生帧间画风漂移与畸变，且 API 生成成本高出静态生图 10~50 倍，离散定长视频切片无法弹性贴合毫秒级 TTS 解说时长；
+- **纯静态原画 + Ken Burns 运镜的局限**：仅支持全局仿射变换（平移/缩放），缺乏具象物理动作（如扣上安全带卡扣、燃气阀门旋紧、水汽升腾、纸张折叠）。
+
+为此，系统确立了 **“静态高精原画锚定风格 + 局部关键镜 I2V 微动 + 尾帧定格缓动呼吸 + 本地音画合成”** 的四位一体混合架构。
+
+### 9.2 I2V 混合流水线处理流程
+```mermaid
+flowchart TD
+    subgraph Step1 ["1. 语义与双轨 Prompt 规划 (muse-spark)"]
+        S1["条目内容"] --> S2["编译 image_prompt (主体/环境/画风卡)"]
+        S1 --> S3["编译 video_motion_prompt (运镜/物理微动作)"]
+    end
+
+    subgraph Step2 ["2. 高精原画基石生成 (muse-image)"]
+        S2 --> I1["生成 1024x1792 高清原画 (scene_{i}.png)"]
+        I1 --> I2["100% 锁定风格卡基调与视觉主体构图"]
+    end
+
+    subgraph Step3 ["3. 关键幕 I2V 物理微动生成 (muse-video)"]
+        I1 & S3 --> V1["判定分镜优先级 (Tier-1: 第 1/5 幕)"]
+        V1 -->|高优先镜头| V2["首帧原画喂入 muse-video (Image-to-Video)"]
+        V2 --> V3["产出 2.5~3.5s 物理微动作视频切片 (motion_{i}.mp4)"]
+        V1 -->|常规镜头| V4["跳过视频生成，维持纯原画 (节省成本)"]
+    end
+
+    subgraph Step4 ["4. 自适应定格缓动延展 (Freeze-and-Drift)"]
+        V3 & A1["TTS 真实音频时长 (T_audio)"] --> T1["以声定景计算目标时长 T_scene"]
+        T1 --> T2{"T_video < T_scene ?"}
+        T2 -->|是| T3["播放真实微动 (T_video) + 尾帧微幅缓动定格 (ΔT)"]
+        T2 -->|否| T4["直接裁切或自然淡出"]
+    end
+
+    subgraph Step5 ["5. 复合装配与交付 (MoviePy / FFmpeg)"]
+        T3 & V4 --> M1["MoviePy 加载混合视频轨与静态运镜轨"]
+        M1 --> M2["叠加 0.5s 交叉溶解与 Pillow 黄金分割字幕"]
+        M2 --> M3["导出 1080x1920 MP4 成片与独立 SRT 字幕"]
+    end
+```
+
+### 9.3 双轨提示词工程契约
+系统已在 `src/prompt_builder.py` 与 `src/muse_client.py` 中完整实现了双轨数据契约：
+1. **`image_prompt` (静态原画)**：
+   ```
+   {Primary_Subject_And_Action}, {Context_And_Environment}, {Art_Style_Keywords}, 
+   cinematic composition, vertical 9:16 aspect ratio, masterpiece, no watermark
+   ```
+2. **`video_motion_prompt` (动态控制)**：
+   ```
+   Camera: {camera_movement_type}, 
+   Subject: {physical_micro_movement}, 
+   photorealistic motion physics, clean frame transition, consistent art style
+   ```
+
+### 9.4 “自适应微动尾帧定格 (Freeze-and-Drift)” 时间轴对齐算法
+为解决 AI 视频固定时长与 TTS 动态语音时长之间的失步痛点：
+$$T_{scene}^{(i)} = \max\left(T_{audio}^{(i)} + 0.5\text{s},\; 3.0\text{s}\right)$$
+- **微动播放区间 ($0 \to T_{video}$)**：直接呈现 `muse-video` 生成的高保真物理微动（如手指扣入卡扣锁紧）；
+- **缓动定格呼吸区间 ($T_{video} \to T_{scene}$)**：抓取视频最后一帧，施加极低速度（变焦比 $< 1.02$）的微幅推拉运镜（Slow Drift），维持画面生命力，确保观众在听完重要口播前视听节奏自然连贯；
+- **毫秒级时间轴保真**：完全兼容 [ADR-004](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-004-Edge-TTS-Integration-and-Audio-Driven-Timing.md) 的动态时间公式与 [ADR-009](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-009-Standalone-SRT-Subtitle-Architecture.md) 的外挂 SRT 字幕导出。
+
+### 9.5 分镜分级混合策略 (Tiered Motion Strategy) 与成本控制
+针对批量量产场景（全书 677 条目），杜绝无节制全量调用视频模型：
+- **Tier-1 (必选微动，建议第 1 幕与第 5 幕)**：
+  - 第 1 幕（0~4.5s 抓眼钩子）：抓住黄金 3 秒完播率；
+  - 第 5 幕（极低成本行动）：直观示范手部操作动作；
+- **Tier-2 (低成本运镜，第 2/3/4/6 幕)**：
+  - 核心论据、科学机理、权威标签与金句定格：信息阅读密度高，继续采用静态原画 + 0.5s 叠化 + Ken Burns 运镜，保证背景沉静、文字阅读舒适；
+- **成本效益对比**：相较全片 6 幕纯视频方案，API 生成费用与渲染耗时骤降 **66% ~ 75%**。
+
+### 9.6 自动化容灾与降级机制 (Fallback Circuit Breaker)
+在系统实现中规划完善的降级机制：
+1. **网络超时 / 429 限流**：若调用 `muse-video` 超时（>60s）或遭遇 API 限流，自动熔断回退到纯 `muse-image` + 本地 Ken Burns 运镜；
+2. **命令行参数支持**：
+   - `--motion-mode static`：默认模式，纯静态原画 + MoviePy 运镜（适合全量批量跑）；
+   - `--motion-mode i2v-tier1`：智能混合模式（仅第 1、5 幕执行 I2V）；
+   - `--motion-mode i2v-all`：全量模式（全部 6 幕执行 I2V，适合标杆精品条目）。
+

@@ -24,7 +24,12 @@ except (AttributeError, io.UnsupportedOperation):
 
 print = functools.partial(print, flush=True)
 
-from src.config import OUTPUT_RAW_ASSETS_DIR
+from src.config import (
+    API_MAX_RETRIES,
+    OUTPUT_RAW_ASSETS_DIR,
+    RATE_LIMIT_MUSE_RPM,
+    RATE_LIMIT_TTS_RPM,
+)
 from src.db import (
     DEFAULT_DB_PATH,
     DEFAULT_PROGRESS_PATH,
@@ -234,21 +239,47 @@ def main():
         choices=[4, 6, 8],
         help="Number of storyboard scenes (default: 6 for Golden 6 Scenes)"
     )
+    parser.add_argument(
+        "--rpm-muse",
+        type=int,
+        default=RATE_LIMIT_MUSE_RPM,
+        help=f"Max requests per minute for Muse AI (default: {RATE_LIMIT_MUSE_RPM})"
+    )
+    parser.add_argument(
+        "--rpm-tts",
+        type=int,
+        default=RATE_LIMIT_TTS_RPM,
+        help=f"Max requests per minute for Cloudflare TTS (default: {RATE_LIMIT_TTS_RPM})"
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=API_MAX_RETRIES,
+        help=f"Max retries for transient API errors with backoff (default: {API_MAX_RETRIES})"
+    )
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
 
     conn = get_connection(args.db_path)
 
-    # Initialize clients
-    client = MuseClient(mock=args.mock)
-    tts_client = TTSClient()
+    # Initialize clients with rate limiting and exponential backoff
+    client = MuseClient(
+        mock=args.mock,
+        rate_limit_rpm=args.rpm_muse,
+        max_retries=args.max_retries,
+    )
+    tts_client = TTSClient(
+        rate_limit_rpm=args.rpm_tts,
+        max_retries=args.max_retries,
+    )
 
     if client.mock:
         print("💡 当前运行环境为 [离线/模拟测试模式] (未检测到有效 MUSE_API_KEY 或开启了 --mock 参数)")
     else:
-        print(f"🔌 当前已连接 Muse AI API: {client.base_url}")
-    print(f"🎙️ 当前已就绪 TTS 语音服务: {tts_client.api_url} [音色: {tts_client.voice}]")
+        print(f"🔌 当前已连接 Muse AI API: {client.base_url} [速率限额: {args.rpm_muse} RPM]")
+    print(f"🎙️ 当前已就绪 TTS 语音服务: {tts_client.api_url} [音色: {tts_client.voice} | 限额: {args.rpm_tts} RPM]")
+    print(f"🔄 瞬时异常容灾机制: 开启指数退避重试 (最大 {args.max_retries} 次重试, 2s -> 4s -> 8s)")
     print(f"🎨 画风配置策略: [{args.style}] ('auto' 为 AI 自主语义决策)")
     print(f"🎬 场景分镜规范: [{args.scenes} 幕] (黄金叙事脉冲节奏)")
 

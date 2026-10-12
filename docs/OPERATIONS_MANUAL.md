@@ -42,6 +42,8 @@ MODEL_TEXT=muse-spark
 MODEL_IMAGE=muse-image
 MODEL_VIDEO=muse-video
 
+> 💡 **模型说明**：当前标准生产使用 `muse-spark` 规划分镜、`muse-image` 生成高精艺术原画，并由 MoviePy 渲染运镜。`MODEL_VIDEO` 为项目预留演进接口，详见 [ADR-010 (I2V 混合动态微动架构)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-010-I2V-Hybrid-Motion-Architecture.md) 与 [系统设计文档 §9](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md#9-视觉动态演进路线图生视频-image-to-video-i2v-混合驱动架构-hybrid-motion-architecture)。
+
 # ==========================================
 # 2. TTS 语音讲解服务配置 (基于 Cloudflare Edge-TTS)
 # ==========================================
@@ -103,7 +105,10 @@ python 02_ai_generator.py --entry-id 01_001 --scenes 6
 # 2.4 强制覆盖重跑已生成条目
 python 02_ai_generator.py --entry-id 01_001 --force
 
-# 2.5 离线/模拟测试模式 (不消耗 API 额度，快速验证流程)
+# 2.5 批量高速生成并自定义速率限制与重试策略 (TASK-4.3)
+python 02_ai_generator.py --limit 10 --rpm-muse 30 --rpm-tts 60 --max-retries 3
+
+# 2.6 离线/模拟测试模式 (不消耗 API 额度，快速验证流程)
 python 02_ai_generator.py --entry-id 01_001 --mock --force
 ```
 

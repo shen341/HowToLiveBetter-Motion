@@ -32,8 +32,69 @@ from src.config import (
     ASSETS_BGM_DIR,
     ASSETS_FONTS_DIR,
     BACKGROUP_MUSIC_DIR,
+    DEFAULT_PLATFORM_PRESET,
     OUTPUT_FINAL_VIDEOS_DIR,
 )
+
+
+PLATFORM_PRESETS: Dict[str, Dict[str, Any]] = {
+    "default": {
+        "name": "通用平衡推荐 (Default)",
+        "crf": 21,
+        "preset": "medium",
+        "audio_bitrate": "128k",
+        "maxrate": "5000k",
+        "bufsize": "10000k",
+        "description": "画质与体积兼顾，适配绝大多数移动端播放器与社交平台 (约 12~16MB/30s)",
+    },
+    "xhs": {
+        "name": "小红书专属抗二压预设 (Xiaohongshu)",
+        "crf": 21,
+        "preset": "medium",
+        "audio_bitrate": "128k",
+        "maxrate": "4500k",
+        "bufsize": "9000k",
+        "description": "严格控制在 15MB 黄金安全线内，避免触发小红书服务端劣化二次转码",
+    },
+    "douyin": {
+        "name": "抖音/TikTok高画质预设 (Douyin/TikTok)",
+        "crf": 20,
+        "preset": "medium",
+        "audio_bitrate": "192k",
+        "maxrate": "6000k",
+        "bufsize": "12000k",
+        "description": "更高码率上限与音频保真度，适配抖音大屏推荐流与高对比度动态帧 (约 16~22MB/30s)",
+    },
+    "wechat": {
+        "name": "微信视频号秒开预设 (WeChat Channels)",
+        "crf": 22,
+        "preset": "medium",
+        "audio_bitrate": "128k",
+        "maxrate": "4000k",
+        "bufsize": "8000k",
+        "description": "高压缩比与低缓冲延迟，适配微信会话与朋友圈内毫秒级流式秒开 (约 10~14MB/30s)",
+    },
+    "bilibili": {
+        "name": "B站竖屏高清归档预设 (Bilibili/Archival)",
+        "crf": 19,
+        "preset": "slow",
+        "audio_bitrate": "192k",
+        "maxrate": "8000k",
+        "bufsize": "16000k",
+        "description": "母带级高保真度，适合长期高清归档与高配额视频平台 (约 20~28MB/30s)",
+    },
+}
+
+
+def get_platform_preset(name: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve platform encoding preset configuration, fallback to 'default'."""
+    key = (name or DEFAULT_PLATFORM_PRESET).lower().strip()
+    return PLATFORM_PRESETS.get(key, PLATFORM_PRESETS["default"])
+
+
+def list_platform_presets() -> Dict[str, Dict[str, Any]]:
+    """Return all available platform presets."""
+    return PLATFORM_PRESETS
 
 
 def find_system_font(bold: bool = False) -> str:
@@ -64,13 +125,15 @@ class VideoAssembler:
         width: int = 1080,
         height: int = 1920,
         fps: int = 30,
-        font_path: Optional[str] = None
+        font_path: Optional[str] = None,
+        default_preset: str = DEFAULT_PLATFORM_PRESET,
     ):
         self.width = width
         self.height = height
         self.fps = fps
         self.font_path = font_path or find_system_font(bold=False)
         self.font_bold_path = find_system_font(bold=True)
+        self.default_preset = default_preset
 
         # Golden ratio Y coordinates on a 1920px canvas
         self.Y_UPPER_GOLDEN = int(self.height * 0.382)  # ~733px (Upper focal area)
@@ -363,7 +426,8 @@ class VideoAssembler:
         entry_data: Dict[str, Any],
         storyboard: Dict[str, Any],
         output_path: str,
-        bgm_path: Optional[str] = None
+        bgm_path: Optional[str] = None,
+        platform_preset: Optional[str] = None,
     ) -> str:
         """
         Assemble the full video with dynamic camera motions, 0.5s transitions,
@@ -473,14 +537,37 @@ class VideoAssembler:
             final_audio = CompositeAudioClip(all_audio_tracks).with_duration(total_duration)
             final_composite = final_composite.with_audio(final_audio)
 
-        # 6. Export MP4 with optimal bitrate and ultrafast encoding
+        # 6. Export MP4 with platform preset and optimal H.264 encoding
+        preset_key = platform_preset or self.default_preset
+        preset_cfg = get_platform_preset(preset_key)
+        crf = preset_cfg["crf"]
+        enc_preset = preset_cfg.get("preset", "medium")
+        audio_bitrate = preset_cfg.get("audio_bitrate", "128k")
+        maxrate = preset_cfg.get("maxrate", "5000k")
+        bufsize = preset_cfg.get("bufsize", "10000k")
+
+        ffmpeg_params = [
+            "-crf", str(crf),
+            "-maxrate", maxrate,
+            "-bufsize", bufsize,
+            "-movflags", "+faststart",
+        ]
+
+        print(
+            f"⚙️ 正在应用发布码率预设: [{preset_cfg['name']}] "
+            f"(CRF={crf}, MaxRate={maxrate}, Audio={audio_bitrate}, movflags=+faststart)"
+        )
+
         final_composite.write_videofile(
             output_path,
             fps=self.fps,
             codec="libx264",
             audio_codec="aac",
-            preset="faster",
+            audio_bitrate=audio_bitrate,
+            pixel_format="yuv420p",
+            preset=enc_preset,
             threads=4,
+            ffmpeg_params=ffmpeg_params,
             logger=None
         )
 

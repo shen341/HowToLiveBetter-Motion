@@ -1,11 +1,11 @@
 {
-  "export_time": "2026-10-12T20:01:08.883630",
+  "export_time": "2026-10-12T21:12:20.611167",
   "total_entries": 677,
   "status_summary": {
-    "Completed": 5,
-    "Media_Generated": 3,
+    "Completed": 8,
     "Pending": 669,
     "Script_Generated": 0,
+    "Media_Generated": 0,
     "Video_Assembled": 0,
     "Failed": 0
   },
@@ -14,7 +14,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 4
+      "completed_items": 7
     },
     {
       "chapter_index": 2,
@@ -225,7 +225,7 @@
       "evidence_grade": "A",
       "status": "Completed",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_001_不要早死之系安全带，前排后排都系.mp4",
-      "updated_at": "2026-10-12T20:01:08.869584"
+      "updated_at": "2026-10-12T21:12:20.591662"
     },
     {
       "id": "01_002",
@@ -267,9 +267,9 @@
       "item_index": 5,
       "title": "不采、不买、不吃野生蘑菇，任何「土办法鉴别」都不成立",
       "evidence_grade": "A",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-12T19:29:13.065604"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_005_不要早死之不采、不买、不吃野生蘑菇，任何「土办法鉴别」都不成立.mp4",
+      "updated_at": "2026-10-12T20:07:08.444060"
     },
     {
       "id": "01_006",
@@ -278,9 +278,9 @@
       "item_index": 6,
       "title": "电动自行车不推进楼道、不进电梯、不在家里充电",
       "evidence_grade": "A",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-12T19:47:00.027227"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_006_不要早死之电动自行车不推进楼道、不进电梯、不在家里充电.mp4",
+      "updated_at": "2026-10-12T20:13:53.673364"
     },
     {
       "id": "01_007",
@@ -289,9 +289,9 @@
       "item_index": 7,
       "title": "量血压，高了就吃药降到达标",
       "evidence_grade": "A",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-12T19:56:29.828827"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_007_不要早死之量血压，高了就吃药降到达标.mp4",
+      "updated_at": "2026-10-12T20:20:40.971342"
     },
     {
       "id": "01_008",

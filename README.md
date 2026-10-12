@@ -36,7 +36,7 @@
 ## 📚 核心文档导航 (Documentation Hub)
 
 - 📖 **[运用手册与运维指南 (Operations Manual)](file:///c:/develop/HowToLiveBetter-Motion/docs/OPERATIONS_MANUAL.md)**：包含前置环境安装、SOP 操作命令、画风调度、BGM 定制、SQLite 运维、剪映二次微调及发布前质检清单。
-- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 9 项关键 ADR（ADR-001 ~ ADR-009），详细阐述双轨状态、画风理念、Pillow 渲染、以声定景、弱音混音、AI 语义自主选风、专属封面生成、黄金 6 幕升级及独立 SRT 字幕架构。
+- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 11 项关键 ADR（ADR-001 ~ ADR-011），详细阐述双轨状态、画风理念、Pillow 渲染、以声定景、弱音混音、AI 语义自主选风、专属封面生成、黄金 6 幕升级、独立 SRT 字幕架构、I2V 混合微动演进路线及令牌桶速率控制与指数退避重试容灾架构。
 - 📋 **[项目路线图与待办任务 (TODO & Roadmap)](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)**：记录已完成里程碑、近期高优先任务及远期规划。
 - 📐 **[系统架构设计与技术选型 (System Design)](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md)**：包含数据 Schema、MoviePy 架构、提示词编译工程与交付三件套标准。
 
