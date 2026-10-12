@@ -6,6 +6,7 @@ Usage:
 """
 
 import argparse
+import functools
 import io
 import json
 import os
@@ -13,9 +14,15 @@ import re
 import sys
 import time
 
-# Ensure UTF-8 output encoding on Windows consoles
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+# Ensure unbuffered UTF-8 output encoding on Windows consoles
+try:
+    sys.stdout.reconfigure(encoding="utf-8", line_buffering=True, write_through=True)
+    sys.stderr.reconfigure(encoding="utf-8", line_buffering=True, write_through=True)
+except (AttributeError, io.UnsupportedOperation):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True, write_through=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True, write_through=True)
+
+print = functools.partial(print, flush=True)
 
 from src.assembler import VideoAssembler
 from src.config import OUTPUT_FINAL_VIDEOS_DIR
@@ -35,14 +42,23 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r'[\\/*?:"<>|,\s]+', "_", name).strip("_")
 
 
-def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: str, custom_bgm: str = None, split_srt: bool = False) -> bool:
+def assemble_one(
+    entry: dict,
+    assembler: VideoAssembler,
+    conn,
+    progress_path: str,
+    custom_bgm: str = None,
+    split_srt: bool = False,
+    current_index: int = 1,
+    total_count: int = 1
+) -> bool:
     """Assemble final MP4 for a single entry."""
     entry_id = entry["id"]
     chapter_title = entry["chapter_title"]
     title = entry["title"]
 
     print("=" * 65)
-    print(f"🎞️ 正在合成短视频 [{entry_id}] 《{chapter_title}》 - {title}")
+    print(f"🎞️ [视频 {current_index}/{total_count}] 正在合成短视频 [{entry_id}] 《{chapter_title}》 - {title}")
     print("=" * 65)
 
     raw_assets_dir = entry.get("raw_assets_dir")
@@ -63,9 +79,10 @@ def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: st
 
     start_time = time.time()
     try:
-        print("🎬 步骤 1/3: 正在串联多幕分镜画面与运镜动效...")
-        print("✍️ 步骤 2/3: 渲染动态大字卡片与多行胶囊旁白字幕...")
-        print("🎵 步骤 3/3: 混入环境轻音乐 BGM 并渲染导出 1080x1920 MP4...")
+        scene_count = len(storyboard.get("scenes", []))
+        print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜，计算 Ken Burns 运镜与 0.5s 交叉淡入淡出...")
+        print("✍️ [步骤 2/3] 渲染黄金比例顶部标题胶囊、动态大字卡片与磨砂玻璃旁白字幕...")
+        print("🎵 [步骤 3/3] 混入环境轻音乐 BGM 并使用 MoviePy 多核渲染导出 1080x1920 MP4...")
 
         assembler.assemble_entry(
             entry_data=entry,
@@ -76,10 +93,10 @@ def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: st
 
         elapsed = time.time() - start_time
         file_size_mb = os.path.getsize(output_mp4_path) / (1024 * 1024)
-        print(f"✅ 合成渲染成功！")
+        print(f"✅ 视频渲染合成成功！")
         print(f"   • 输出文件: {output_mp4_path}")
         print(f"   • 文件大小: {file_size_mb:.2f} MB")
-        print(f"   • 耗时: {elapsed:.1f} 秒")
+        print(f"   • 渲染耗时: {elapsed:.1f} 秒")
 
         # 确保配套的高清封面卡片存放在 final_videos 目录下，便于发布时直接作为首图取用
         raw_cover = os.path.join(raw_assets_dir, "cover.png")
@@ -125,7 +142,7 @@ def assemble_one(entry: dict, assembler: VideoAssembler, conn, progress_path: st
             final_video_path=output_mp4_path
         )
         export_progress_json(conn, progress_path)
-        print(f"🎉 状态已归档: [Completed]\n")
+        print(f"🎉 [视频 {current_index}/{total_count}] 条目 [{entry_id}] 视频流水线完成！状态: Completed\n")
         return True
 
     except Exception as e:
@@ -164,14 +181,27 @@ def main():
         print("ℹ️ 没有待合成的条目 (状态需为 Media_Generated)。可通过 --entry-id 或 --force 指定条目。")
         sys.exit(0)
 
-    print(f"📋 即将合成 {len(entries)} 个视频...")
+    total_count = len(entries)
+    print(f"📋 即将批量合成 {total_count} 个短视频...")
     success_cnt = 0
-    for entry in entries:
-        if assemble_one(entry, assembler, conn, args.progress_path, custom_bgm=args.bgm, split_srt=args.split_srt):
+    batch_start = time.time()
+
+    for idx, entry in enumerate(entries, start=1):
+        if assemble_one(
+            entry,
+            assembler,
+            conn,
+            args.progress_path,
+            custom_bgm=args.bgm,
+            split_srt=args.split_srt,
+            current_index=idx,
+            total_count=total_count
+        ):
             success_cnt += 1
 
+    batch_elapsed = time.time() - batch_start
     print("-" * 65)
-    print(f"🏁 视频合成批处理完成: 成功 {success_cnt} / {len(entries)} 条")
+    print(f"🏁 视频合成批处理完成: 成功 {success_cnt} / {total_count} 条 (总耗时: {batch_elapsed:.1f}s)")
     print("-" * 65)
 
 

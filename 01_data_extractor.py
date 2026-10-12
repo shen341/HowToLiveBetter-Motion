@@ -11,10 +11,17 @@ import os
 import subprocess
 import sys
 import io
+import functools
 
-# Ensure UTF-8 output encoding on Windows consoles
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+# Ensure unbuffered UTF-8 output encoding on Windows consoles
+try:
+    sys.stdout.reconfigure(encoding="utf-8", line_buffering=True, write_through=True)
+    sys.stderr.reconfigure(encoding="utf-8", line_buffering=True, write_through=True)
+except (AttributeError, io.UnsupportedOperation):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True, write_through=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True, write_through=True)
+
+print = functools.partial(print, flush=True)
 
 from src.db import (
     DEFAULT_DB_PATH,

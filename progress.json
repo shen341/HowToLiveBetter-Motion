@@ -1,11 +1,11 @@
 {
-  "export_time": "2026-10-11T21:24:46.089545",
+  "export_time": "2026-10-12T20:01:08.883630",
   "total_entries": 677,
   "status_summary": {
-    "Completed": 3,
-    "Pending": 674,
+    "Completed": 5,
+    "Media_Generated": 3,
+    "Pending": 669,
     "Script_Generated": 0,
-    "Media_Generated": 0,
     "Video_Assembled": 0,
     "Failed": 0
   },
@@ -14,7 +14,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 2
+      "completed_items": 4
     },
     {
       "chapter_index": 2,
@@ -225,7 +225,7 @@
       "evidence_grade": "A",
       "status": "Completed",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_001_不要早死之系安全带，前排后排都系.mp4",
-      "updated_at": "2026-10-11T14:39:16.100728"
+      "updated_at": "2026-10-12T20:01:08.869584"
     },
     {
       "id": "01_002",
@@ -245,9 +245,9 @@
       "item_index": 3,
       "title": "装烟雾报警器；冬天在室内烧煤、用燃气取暖的再装一氧化碳报警器",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731068"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_003_不要早死之装烟雾报警器；冬天在室内烧煤、用燃气取暖的再装一氧化碳报警器.mp4",
+      "updated_at": "2026-10-11T22:01:49.552834"
     },
     {
       "id": "01_004",
@@ -256,9 +256,9 @@
       "item_index": 4,
       "title": "燃气软管和灶具到期就换，不自己改管道，燃气公司上门推销可以直接拒绝",
       "evidence_grade": "C",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731119"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_004_不要早死之燃气软管和灶具到期就换，不自己改管道，燃气公司上门推销可以直接拒绝.mp4",
+      "updated_at": "2026-10-11T22:18:13.597361"
     },
     {
       "id": "01_005",
@@ -267,9 +267,9 @@
       "item_index": 5,
       "title": "不采、不买、不吃野生蘑菇，任何「土办法鉴别」都不成立",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731163"
+      "updated_at": "2026-10-12T19:29:13.065604"
     },
     {
       "id": "01_006",
@@ -278,9 +278,9 @@
       "item_index": 6,
       "title": "电动自行车不推进楼道、不进电梯、不在家里充电",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731198"
+      "updated_at": "2026-10-12T19:47:00.027227"
     },
     {
       "id": "01_007",
@@ -289,9 +289,9 @@
       "item_index": 7,
       "title": "量血压，高了就吃药降到达标",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731249"
+      "updated_at": "2026-10-12T19:56:29.828827"
     },
     {
       "id": "01_008",
