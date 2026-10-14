@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from src.config import ASSETS_FONTS_DIR
+from src.whiteboard.svg_library import SVGIconLibrary
 
 
 @dataclass
@@ -44,6 +45,7 @@ class WhiteboardLayoutEngine:
         self.width = width
         self.height = height
         self.font_cache: Dict[Tuple[int, bool], ImageFont.FreeTypeFont] = {}
+        self.svg_library = SVGIconLibrary()
 
     def _get_font(self, size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
         """Discover and load high-quality Chinese fonts with graceful fallback."""
@@ -605,63 +607,111 @@ class WhiteboardLayoutEngine:
         cy = 850
         all_strokes: List[List[Tuple[float, float]]] = []
 
-        # Determine diagram mode based on scene_index and keywords
-        kw = (
-            board_spec.get("board_keywords", "")
-            + " "
-            + board_spec.get("key_subject", "")
-            + " "
-            + scene.get("primary_subject", "")
-            + " "
-            + title_text
-        ).lower()
+        # Determine diagram mode based on scene metadata, keywords, and semantic vector icons
+        board_keywords = board_spec.get("board_keywords", "")
+        key_subject = board_spec.get("key_subject", "")
+        primary_subject = scene.get("primary_subject", "")
+        narration = scene.get("narration_segment", "")
+        context_text = f"{title_text} {key_subject} {board_keywords} {primary_subject} {narration}".strip()
 
-        if scene_index == 4 or "证据" in kw or "徽章" in kw or "grade" in kw:
+        # Prioritize matching based on scene role or keyword semantics
+        preferred_priority = None
+        if scene_index == 3:
+            # Underpinning logic / mechanism: prioritize domain objects like automobile, seatbelt
+            preferred_priority = ["automobile", "seatbelt", "heart_pulse"]
+        elif scene_index == 4:
+            preferred_priority = ["shield_badge"]
+        elif scene_index == 5:
+            preferred_priority = ["balance_scale", "clock_time"]
+        elif scene_index == 6:
+            preferred_priority = ["checkmark_circle"]
+        elif scene_index == 2:
+            preferred_priority = ["crash_warning"]
+        elif scene_index == 1:
+            preferred_priority = ["seatbelt", "automobile", "heart_pulse"]
+
+        matched_icon = self.svg_library.match_icon(context_text, preferred_priority=preferred_priority)
+        svg_strokes = None
+        if matched_icon:
+            target_w = 420.0 if matched_icon in ("automobile", "balance_scale") else 340.0
+            svg_strokes = self.svg_library.get_icon_strokes(
+                icon_name_or_keyword=matched_icon,
+                center_x=cx,
+                center_y=cy - 30,
+                target_width=target_w,
+            )
+
+        if svg_strokes:
+            all_strokes.extend(svg_strokes)
+            # Add semantic labels based on matched icon and context
+            if matched_icon == "automobile":
+                label = "车祸生存概率 +50%" if any(k in context_text for k in ("50%", "一半", "车祸", "撞死")) else "乘员安全防护"
+                draw.text((cx, cy + 180), label, fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "碰撞缓冲与生命守护", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "seatbelt":
+                draw.text((cx, cy + 180), "上车即系 · 前后排皆系", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "极简动作 守护一生", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "shield_badge":
+                draw.text((cx, cy + 190), "权威证据标准", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 240), "循证医学 A 级认证", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "balance_scale":
+                draw.text((cx - 150, cy + 140), "成本 ≈ 0", fill=(160, 95, 50), font=self._get_font(28, bold=True), anchor="mm")
+                draw.text((cx + 150, cy + 140), "确定收益", fill=(46, 117, 89), font=self._get_font(28, bold=True), anchor="mm")
+                draw.text((cx, cy + 220), "极低成本 vs 极高回报", fill=(46, 117, 89), font=self._get_font(32, bold=True), anchor="mm")
+            elif matched_icon == "checkmark_circle":
+                draw.text((cx, cy + 180), "行动是唯一解", fill=(46, 117, 89), font=self._get_font(36, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "立即执行 · 形成本能习惯", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "crash_warning":
+                draw.text((cx, cy + 170), "认知盲区与陷阱", fill=(160, 95, 50), font=self._get_font(32, bold=True), anchor="mm")
+                draw.text((cx, cy + 220), "忽视潜在风险代价值千金", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "clock_time":
+                draw.text((cx, cy + 180), "仅需 2 秒", fill=(160, 95, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "微小习惯撬动巨大确定性", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "heart_pulse":
+                draw.text((cx, cy + 180), "守护生命健康", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "将非受控风险降至最低", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            else:
+                lbl = key_subject or title_text[:8]
+                draw.text((cx, cy + 180), lbl, fill=(46, 117, 89), font=self._get_font(32, bold=True), anchor="mm")
+
+        elif scene_index == 4 or "证据" in context_text or "徽章" in context_text or "grade" in context_text:
             strokes = self.generate_shield_strokes(cx=cx, cy=cy, w=260, h=320)
             all_strokes.extend(strokes)
-            # Add subtitle
             draw.text((cx, cy + 220), "权威证据标准", fill=(46, 117, 89), font=self._get_font(32, bold=True), anchor="mm")
 
-        elif scene_index == 3 or "逻辑" in kw or "机理" in kw or "箭头" in kw or "流程" in kw:
-            # 2 circular nodes connected with curved arrow
+        elif scene_index == 3 or "逻辑" in context_text or "机理" in context_text or "箭头" in context_text:
             left_x = cx - 220
             right_x = cx + 220
-            # Left node
             c1 = []
             for i in range(25):
                 ang = (i / 24.0) * 2 * math.pi
                 c1.append((round(left_x + 55 * math.cos(ang), 2), round(cy + 55 * math.sin(ang), 2)))
             all_strokes.append(c1)
-            # Right node
             c2 = []
             for i in range(25):
                 ang = (i / 24.0) * 2 * math.pi
                 c2.append((round(right_x + 55 * math.cos(ang), 2), round(cy + 55 * math.sin(ang), 2)))
             all_strokes.append(c2)
-            # Flow arrow
             arrow = self.generate_flow_arrow_strokes(left_x + 65, cy, right_x - 65, cy)
             all_strokes.extend(arrow)
-            # Text inside/under nodes
             draw.text((left_x, cy), "原因", fill=(160, 95, 50), font=self._get_font(28, bold=True), anchor="mm")
             draw.text((right_x, cy), "结果", fill=(46, 117, 89), font=self._get_font(28, bold=True), anchor="mm")
             draw.text((cx, cy + 130), "底层因果逻辑", fill=(60, 60, 60), font=self._get_font(30, bold=True), anchor="mm")
 
-        elif scene_index == 5 or "成本" in kw or "天平" in kw or "收益" in kw or "性价比" in kw:
+        elif scene_index == 5 or "成本" in context_text or "天平" in context_text or "收益" in context_text:
             scale_strokes = self.generate_balance_scale_strokes(cx=cx, cy=cy - 20, w=380, h=260)
             all_strokes.extend(scale_strokes)
             draw.text((cx - 150, cy + 130), "成本 ≈ 0", fill=(160, 95, 50), font=self._get_font(28, bold=True), anchor="mm")
             draw.text((cx + 150, cy + 130), "确定收益", fill=(46, 117, 89), font=self._get_font(28, bold=True), anchor="mm")
 
-        elif scene_index == 6 or "行动" in kw or "对勾" in kw or "解" in kw:
+        elif scene_index == 6 or "行动" in context_text or "对勾" in context_text or "解" in context_text:
             check_strokes = self.generate_checkmark_strokes(cx=cx, cy=cy, size=150)
             all_strokes.extend(check_strokes)
             draw.text((cx, cy + 200), "立即行动", fill=(46, 117, 89), font=self._get_font(36, bold=True), anchor="mm")
 
-        elif scene_index == 2 or "误区" in kw or "盲区" in kw or "注意" in kw or "警示" in kw:
-            # Rounded box with question mark
+        elif scene_index == 2 or "误区" in context_text or "盲区" in context_text or "警示" in context_text:
             box = self.generate_rounded_box_strokes(cx, cy, w=320, h=200, radius=24)
             all_strokes.extend(box)
-            # Question mark strokes
             q_stem = []
             for i in range(15):
                 t = i / 14.0
@@ -672,7 +722,6 @@ class WhiteboardLayoutEngine:
             draw.text((cx, cy + 150), "认知盲区与陷阱", fill=(160, 95, 50), font=self._get_font(30, bold=True), anchor="mm")
 
         else:
-            # Default: elegant card box with cursor
             box = self.generate_rounded_box_strokes(cx, cy, w=300, h=160, radius=28)
             cursor = self.generate_cursor_strokes(tip_x=cx + 70, tip_y=cy + 40, size=50)
             all_strokes.extend(box)

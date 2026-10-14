@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+        <!-- Main Car Body & Cabin Outline -->
+        <path d="M 5,42 L 18,42 C 18,36 28,36 28,42 L 72,42 C 72,36 82,36 82,42 L 95,42 C 97,42 98,39 96,36 L 88,27 C 85,25 81,25 78,25 L 68,13 C 66,10 61,10 56,10 L 32,10 C 26,10 22,14 19,20 L 10,26 C 6,28 4,32 5,36 Z" />
+        <!-- Front & Rear Windows Separator -->
+        <path d="M 33,13 L 23,24 L 50,24 L 50,13 Z" />
+        <path d="M 53,13 L 53,24 L 75,24 L 66,13 Z" />
+        <!-- Front Wheel (Outer & Rim) -->
+        <circle cx="23" cy="42" r="6" />
+        <circle cx="23" cy="42" r="2.5" />
+        <!-- Rear Wheel (Outer & Rim) -->
+        <circle cx="77" cy="42" r="6" />
+        <circle cx="77" cy="42" r="2.5" />
+        <!-- Headlight & Tail light accents -->
+        <line x1="93" y1="35" x2="97" y2="35" />
+        <line x1="4" y1="34" x2="7" y2="34" />
+        <!-- Door handle & waistline -->
+        <line x1="45" y1="28" x2="52" y2="28" />
+    </svg>

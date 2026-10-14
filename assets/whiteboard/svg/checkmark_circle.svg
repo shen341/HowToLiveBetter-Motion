@@ -1,0 +1,6 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Circle -->
+        <circle cx="40" cy="40" r="32" />
+        <!-- Inner Bold Checkmark -->
+        <path d="M 24,40 L 35,52 L 56,26" />
+    </svg>

@@ -1,0 +1,6 @@
+<svg viewBox="0 0 80 70" xmlns="http://www.w3.org/2000/svg">
+        <!-- Heart Outline -->
+        <path d="M 40,62 C 34,56 12,40 12,24 C 12,14 20,8 30,8 C 36,8 40,12 40,12 C 40,12 44,8 50,8 C 60,8 68,14 68,24 C 68,40 46,56 40,62 Z" />
+        <!-- Pulse EKG Line through Center -->
+        <polyline points="18,34 28,34 33,20 38,48 43,26 48,34 62,34" />
+    </svg>

@@ -1,0 +1,255 @@
+"""Local SVG Icon Registry and Semantic Matcher for Whiteboard Explainer Animation."""
+
+import os
+import re
+from typing import Dict, List, Optional, Tuple
+
+from src.whiteboard.svg_parser import parse_svg_content, scale_and_center_strokes
+
+# Built-in clean minimalist line-art SVGs (optimized for drawing pen reveals)
+BUILTIN_SVGS: Dict[str, str] = {
+    # 1. Automobile / Car: Elegant side-profile sedan with windshield, roof arc, wheels, and lights
+    "automobile": """<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+        <!-- Main Car Body & Cabin Outline -->
+        <path d="M 5,42 L 18,42 C 18,36 28,36 28,42 L 72,42 C 72,36 82,36 82,42 L 95,42 C 97,42 98,39 96,36 L 88,27 C 85,25 81,25 78,25 L 68,13 C 66,10 61,10 56,10 L 32,10 C 26,10 22,14 19,20 L 10,26 C 6,28 4,32 5,36 Z" />
+        <!-- Front & Rear Windows Separator -->
+        <path d="M 33,13 L 23,24 L 50,24 L 50,13 Z" />
+        <path d="M 53,13 L 53,24 L 75,24 L 66,13 Z" />
+        <!-- Front Wheel (Outer & Rim) -->
+        <circle cx="23" cy="42" r="6" />
+        <circle cx="23" cy="42" r="2.5" />
+        <!-- Rear Wheel (Outer & Rim) -->
+        <circle cx="77" cy="42" r="6" />
+        <circle cx="77" cy="42" r="2.5" />
+        <!-- Headlight & Tail light accents -->
+        <line x1="93" y1="35" x2="97" y2="35" />
+        <line x1="4" y1="34" x2="7" y2="34" />
+        <!-- Door handle & waistline -->
+        <line x1="45" y1="28" x2="52" y2="28" />
+    </svg>""",
+
+    # 2. Seatbelt: Cross diagonal strap with secure latch and click buckle
+    "seatbelt": """<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <!-- Diagonal Shoulder Strap -->
+        <path d="M 10,12 L 68,70 L 62,76 L 4,18 Z" />
+        <!-- Buckle Outer Shell -->
+        <path d="M 32,32 L 48,16 C 51,13 56,13 59,16 L 64,21 C 67,24 67,29 64,32 L 48,48 C 45,51 40,51 37,48 Z" />
+        <!-- Metal Tongue Insertion -->
+        <path d="M 28,36 L 36,44 L 32,48 L 24,40 Z" />
+        <!-- Red Release Button -->
+        <rect x="44" y="24" width="10" height="6" />
+        <!-- Safety Click Sparks -->
+        <line x1="22" y1="26" x2="16" y2="22" />
+        <line x1="26" y1="22" x2="24" y2="15" />
+        <line x1="38" y1="18" x2="38" y2="11" />
+    </svg>""",
+
+    # 3. Crash Warning Triangle
+    "crash_warning": """<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Warning Triangle -->
+        <path d="M 40,8 L 74,68 C 76,71 74,75 70,75 L 10,75 C 6,75 4,71 6,68 Z" />
+        <!-- Inner Border Triangle -->
+        <path d="M 40,18 L 66,65 L 14,65 Z" />
+        <!-- Exclamation Mark Bar -->
+        <line x1="40" y1="32" x2="40" y2="48" />
+        <!-- Exclamation Mark Dot -->
+        <circle cx="40" cy="56" r="2.5" />
+    </svg>""",
+
+    # 4. Shield Badge (Authority & Grade Certification)
+    "shield_badge": """<svg viewBox="0 0 80 90" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Shield -->
+        <path d="M 40,6 C 58,6 72,12 72,12 C 72,50 56,76 40,84 C 24,76 8,50 8,12 C 8,12 22,6 40,6 Z" />
+        <!-- Inner Shield Ribbon -->
+        <path d="M 40,14 C 54,14 64,18 64,18 C 64,48 50,70 40,76 C 30,70 16,48 16,18 C 16,18 26,14 40,14 Z" />
+        <!-- Star / Grade Symbol in Center -->
+        <path d="M 40,28 L 43,38 L 53,38 L 45,44 L 48,54 L 40,48 L 32,54 L 35,44 L 27,38 L 37,38 Z" />
+    </svg>""",
+
+    # 5. Balance Scale (Cost vs Benefit)
+    "balance_scale": """<svg viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg">
+        <!-- Base Stand -->
+        <line x1="45" y1="12" x2="45" y2="58" />
+        <path d="M 32,64 L 45,58 L 58,64 Z" />
+        <!-- Top Beam (Slightly tilted up to right) -->
+        <line x1="12" y1="22" x2="78" y2="14" />
+        <!-- Left Pan Strings & Plate (Cost) -->
+        <line x1="12" y1="22" x2="6" y2="42" />
+        <line x1="12" y1="22" x2="20" y2="42" />
+        <path d="M 4,42 C 4,48 22,48 22,42 Z" />
+        <!-- Right Pan Strings & Plate (Benefit, heavier/bigger) -->
+        <line x1="78" y1="14" x2="70" y2="38" />
+        <line x1="78" y1="14" x2="86" y2="38" />
+        <path d="M 66,38 C 66,48 90,48 90,38 Z" />
+    </svg>""",
+
+    # 6. Checkmark Circle (Decisive Action)
+    "checkmark_circle": """<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Circle -->
+        <circle cx="40" cy="40" r="32" />
+        <!-- Inner Bold Checkmark -->
+        <path d="M 24,40 L 35,52 L 56,26" />
+    </svg>""",
+
+    # 7. Clock / Stopwatch (Minimal Time & Seconds)
+    "clock_time": """<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer Clock Dial -->
+        <circle cx="40" cy="42" r="30" />
+        <!-- Top Button -->
+        <line x1="40" y1="6" x2="40" y2="12" />
+        <line x1="34" y1="6" x2="46" y2="6" />
+        <!-- Hour Hand & Minute Hand pointing to ~2s / quick time -->
+        <line x1="40" y1="42" x2="40" y2="24" />
+        <line x1="40" y1="42" x2="56" y2="34" />
+        <!-- Small center pin -->
+        <circle cx="40" cy="42" r="2" />
+    </svg>""",
+
+    # 8. Heart Life Pulse (Health & Safety)
+    "heart_pulse": """<svg viewBox="0 0 80 70" xmlns="http://www.w3.org/2000/svg">
+        <!-- Heart Outline -->
+        <path d="M 40,62 C 34,56 12,40 12,24 C 12,14 20,8 30,8 C 36,8 40,12 40,12 C 40,12 44,8 50,8 C 60,8 68,14 68,24 C 68,40 46,56 40,62 Z" />
+        <!-- Pulse EKG Line through Center -->
+        <polyline points="18,34 28,34 33,20 38,48 43,26 48,34 62,34" />
+    </svg>""",
+}
+
+# Semantic dictionary mapping domain keywords to appropriate icon IDs
+SEMANTIC_KEYWORD_MAP: Dict[str, List[str]] = {
+    "automobile": [
+        "汽车", "车", "车祸", "轿车", "卡车", "撞车", "驾驶", "车辆", "行车", "死在车里", "安全带", "乘车", "副驾驶",
+        "car", "automobile", "drive", "vehicle", "crash", "truck"
+    ],
+    "seatbelt": [
+        "安全带", "卡扣", "系带", "插销", "扣紧", "前排", "后排",
+        "seatbelt", "buckle"
+    ],
+    "crash_warning": [
+        "误区", "盲区", "陷阱", "警示", "危险", "事故", "风险", "漏洞", "注意",
+        "warning", "caution", "alert", "danger", "pitfall"
+    ],
+    "shield_badge": [
+        "证据", "权威", "等级", "认证", "标准", "who", "nhtsa", "规范", "徽章", "硬核",
+        "shield", "badge", "grade", "evidence", "certified"
+    ],
+    "balance_scale": [
+        "天平", "对比", "性价比", "投入", "产出", "收益", "代价",
+        "scale", "balance", "cost", "benefit"
+    ],
+    "clock_time": [
+        "成本", "时间", "秒", "时钟", "快速", "2秒", "两秒", "花费", "平时",
+        "clock", "time", "second", "fast"
+    ],
+    "checkmark_circle": [
+        "行动", "唯一解", "对勾", "完成", "立即", "开始", "执行", "落实",
+        "check", "action", "done", "start"
+    ],
+    "heart_pulse": [
+        "生命", "健康", "心跳", "存活", "救命", "保命", "猝死",
+        "heart", "life", "health", "pulse"
+    ],
+}
+
+
+class SVGIconLibrary:
+    """Manager for retrieving, persisting, and scaling whiteboard vector graphics."""
+
+    def __init__(self, asset_dir: Optional[str] = None):
+        self.asset_dir = asset_dir or os.path.join("assets", "whiteboard", "svg")
+        os.makedirs(self.asset_dir, exist_ok=True)
+        self._ensure_builtin_svg_files()
+
+    def _ensure_builtin_svg_files(self):
+        """Materialize built-in SVGs as physical files in assets/whiteboard/svg/ for user editing."""
+        for name, content in BUILTIN_SVGS.items():
+            file_path = os.path.join(self.asset_dir, f"{name}.svg")
+            if not os.path.exists(file_path):
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        f.write(content.strip())
+                except Exception:
+                    pass
+
+    def get_svg_content(self, icon_name: str) -> Optional[str]:
+        """Fetch SVG XML content from disk or built-in registry."""
+        file_path = os.path.join(self.asset_dir, f"{icon_name}.svg")
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception:
+                pass
+        return BUILTIN_SVGS.get(icon_name)
+
+    def match_icon(self, text: str, preferred_priority: Optional[List[str]] = None) -> Optional[str]:
+        """
+        Analyze Chinese/English text semantically to match the most suitable vector icon.
+        
+        Args:
+            text: Context string (scene subject, narration, keywords).
+            preferred_priority: Optional list of icon names to prioritize.
+        """
+        if not text:
+            return None
+
+        clean_text = text.lower()
+
+        # Check priorities first
+        if preferred_priority:
+            for icon_id in preferred_priority:
+                keywords = SEMANTIC_KEYWORD_MAP.get(icon_id, [])
+                if any(kw.lower() in clean_text for kw in keywords):
+                    return icon_id
+
+        # General matching with specificity scoring
+        best_icon: Optional[str] = None
+        best_score = 0
+
+        for icon_id, keywords in SEMANTIC_KEYWORD_MAP.items():
+            score = 0
+            for kw in keywords:
+                if kw.lower() in clean_text:
+                    # Longer keyword matches get higher specificity weight
+                    score += len(kw)
+            if score > best_score:
+                best_score = score
+                best_icon = icon_id
+
+        return best_icon
+
+    def get_icon_strokes(
+        self,
+        icon_name_or_keyword: str,
+        center_x: float = 540.0,
+        center_y: float = 850.0,
+        target_width: float = 380.0,
+        target_height: Optional[float] = None,
+    ) -> Optional[List[List[Tuple[float, float]]]]:
+        """
+        Retrieve and scale vector stroke polyline paths for an icon by name or keyword.
+        """
+        # 1. Direct icon name lookup
+        icon_name = icon_name_or_keyword.lower().strip()
+        if icon_name not in BUILTIN_SVGS:
+            # 2. Try semantic matching
+            matched = self.match_icon(icon_name_or_keyword)
+            if matched:
+                icon_name = matched
+            else:
+                return None
+
+        svg_content = self.get_svg_content(icon_name)
+        if not svg_content:
+            return None
+
+        raw_strokes = parse_svg_content(svg_content)
+        if not raw_strokes:
+            return None
+
+        return scale_and_center_strokes(
+            strokes=raw_strokes,
+            center_x=center_x,
+            center_y=center_y,
+            target_width=target_width,
+            target_height=target_height,
+        )

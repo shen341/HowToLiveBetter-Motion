@@ -161,5 +161,97 @@ class TestHandCompositor(unittest.TestCase):
             self.assertEqual(frame.dtype, np.uint8)
 
 
+
+class TestSVGParserAndLibrary(unittest.TestCase):
+    """Test SVG parsing, projection scaling, and semantic keyword matching."""
+
+    def test_svg_parser_primitives(self):
+        """Verify SVG parser converts paths, circles, rects, and lines into scaled polylines."""
+        from src.whiteboard.svg_parser import parse_svg_content, scale_and_center_strokes
+
+        svg_sample = """<svg viewBox="0 0 100 100">
+            <path d="M 10,10 L 90,10 C 90,50 50,90 10,90 Z" />
+            <circle cx="50" cy="50" r="20" />
+            <rect x="20" y="20" width="30" height="30" />
+            <line x1="10" y1="10" x2="90" y2="90" />
+        </svg>"""
+        strokes = parse_svg_content(svg_sample)
+        self.assertEqual(len(strokes), 4)
+
+        scaled = scale_and_center_strokes(strokes, center_x=540, center_y=850, target_width=300)
+        self.assertEqual(len(scaled), 4)
+        for s in scaled:
+            self.assertGreater(len(s), 1)
+
+    def test_svg_library_builtin_icons(self):
+        """Verify built-in SVGs (automobile, seatbelt, crash_warning, shield_badge, etc.) parse properly."""
+        from src.whiteboard.svg_library import SVGIconLibrary, BUILTIN_SVGS
+
+        lib = SVGIconLibrary()
+        for icon_id in BUILTIN_SVGS:
+            strokes = lib.get_icon_strokes(icon_id, center_x=540, center_y=850, target_width=360)
+            self.assertIsNotNone(strokes, f"Failed to get strokes for {icon_id}")
+            self.assertGreater(len(strokes), 0)
+
+    def test_svg_library_semantic_matching(self):
+        """Verify semantic keyword matching accurately maps automobile for car crash keywords."""
+        from src.whiteboard.svg_library import SVGIconLibrary
+
+        lib = SVGIconLibrary()
+        # Scene 3: "安全带" "车祸" "死在车里" -> automobile
+        matched = lib.match_icon("坐前排系上安全带，出车祸时被撞死的概率大约降一半。坐轻型卡车前排的降六成。")
+        self.assertEqual(matched, "automobile")
+
+        # Scene 4: "证据等级 A 级" -> shield_badge
+        matched_ev = lib.match_icon("证据等级达到 A 级权威标准，权威数据真实可信。")
+        self.assertEqual(matched_ev, "shield_badge")
+
+        # Scene 5: "天平对比" "投入产出" "成本" "收益" -> balance_scale
+        matched_cost = lib.match_icon("天平对比 投入产出 执行成本：不花钱，每次上车多花 2 秒；而收益却是：致命伤风险下降。", preferred_priority=["balance_scale"])
+        self.assertEqual(matched_cost, "balance_scale")
+
+
+class TestSentenceExtractionNoTruncation(unittest.TestCase):
+    """Test extract_complete_sentences ensures zero sentence truncation."""
+
+    def test_extract_complete_sentences(self):
+        from src.muse_client import extract_complete_sentences
+
+        text1 = "底层逻辑非常清晰：坐前排系上安全带，出车祸时被撞死的概率大约降一半。坐轻型卡车前排的降六成。美国 2022 年死在车里的人，能查到系没系带的，有一半没系。"
+        res1 = extract_complete_sentences(text1, max_chars=55)
+        self.assertEqual(res1, "底层逻辑非常清晰：坐前排系上安全带，出车祸时被撞死的概率大约降一半。坐轻型卡车前排的降六成。")
+        self.assertNotIn("美国 2022 年死在车里", res1)
+        self.assertTrue(res1.endswith("。"))
+
+        text2 = "美国交通安全主管部门（NHTSA）估计，系安全带能让轿车前排乘员受致命伤的风险下降 45%。轻型卡车前排下降 60%。"
+        res2 = extract_complete_sentences(text2, max_chars=45)
+        self.assertEqual(res2, "美国交通安全主管部门（NHTSA）估计，系安全带能让轿车前排乘员受致命伤的风险下降 45%。")
+        self.assertTrue(res2.endswith("。"))
+
+
+class TestLayoutEngineSceneSemanticStrokes(unittest.TestCase):
+    """Test WhiteboardLayoutEngine dynamically generates automobile strokes for Scene 3."""
+
+    def test_scene_3_automobile_generation(self):
+        from src.whiteboard.layout_engine import WhiteboardLayoutEngine
+
+        engine = WhiteboardLayoutEngine()
+        scene_3 = {
+            "scene_index": 3,
+            "board_spec": {
+                "board_title": "底层逻辑",
+                "key_subject": "汽车安全",
+                "board_keywords": "汽车 安全带 车祸防护",
+            },
+            "primary_subject": "安全带与汽车碰撞受力防护机制",
+            "narration_segment": "底层逻辑非常清晰：坐前排系上安全带，出车祸时被撞死的概率大约降一半。坐轻型卡车前排的降六成。",
+        }
+        layout, base_canvas, strokes = engine.generate_scene_layout(scene_3, scene_index=3)
+        self.assertEqual(layout.scene_title, "底层逻辑")
+        self.assertGreaterEqual(len(strokes), 8)  # Automobile has 10 strokes
+        self.assertEqual(base_canvas.size, (1080, 1920))
+
+
 if __name__ == "__main__":
     unittest.main()
+

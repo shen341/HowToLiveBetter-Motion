@@ -1,5 +1,5 @@
 {
-  "export_time": "2026-10-14T21:48:59.604460",
+  "export_time": "2026-10-14T22:24:49.227873",
   "total_entries": 677,
   "status_summary": {
     "Approved": 23,
@@ -227,7 +227,7 @@
       "evidence_grade": "A",
       "status": "Completed",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_001_不要早死之系安全带，前排后排都系.mp4",
-      "updated_at": "2026-10-14T21:48:59.576132"
+      "updated_at": "2026-10-14T22:24:49.202252"
     },
     {
       "id": "01_002",

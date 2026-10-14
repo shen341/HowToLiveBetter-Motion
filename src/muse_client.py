@@ -91,6 +91,36 @@ def is_i2v_scene(scene_index: int, total_scenes: int = 6, motion_mode: str = "st
     return False
 
 
+def extract_complete_sentences(text: str, max_chars: int = 55) -> str:
+    """Extract complete sentences without mid-sentence truncation or dangling clauses."""
+    if not text:
+        return ""
+    clean = re.sub(r"\s+", " ", text).strip()
+    sentences = re.split(r"(?<=[。！？；])", clean)
+    collected = []
+    current_len = 0
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        if current_len + len(s) <= max_chars or not collected:
+            collected.append(s)
+            current_len += len(s)
+        else:
+            break
+    res = "".join(collected).strip()
+    if res and not res.endswith(("。", "！", "？", "；", "…")):
+        if "，" in res:
+            parts = res.rsplit("，", 1)
+            if len(parts[0]) >= 15:
+                res = parts[0] + "。"
+            else:
+                res = res + "。"
+        else:
+            res = res + "。"
+    return res
+
+
 class MuseClient:
     """Client for AI API supporting script, image, and video generation with local/cloud modes, rate limiting, and exponential backoff."""
 
@@ -698,6 +728,16 @@ class MuseClient:
         style_info = get_style_recipe(style_id)
         video_title = f"{chapter_title}之{item_title}"
 
+        # Clean logic and benefit sentences to guarantee zero truncated phrases
+        clean_logic = extract_complete_sentences(plain_text, max_chars=55)
+        if not clean_logic:
+            clean_logic = f"科学研究证实，{item_title}能直接改善生活质量与安全。"
+        clean_benefit = extract_complete_sentences(benefit_desc, max_chars=45)
+        if not clean_benefit:
+            clean_benefit = "能够显著降低潜在风险并带来巨大回报。"
+        # Clean cost description to avoid awkward punctuation combinations like "。；"
+        clean_cost = cost_desc.replace("。", "，").rstrip("，").strip()
+
         if scene_count == 6:
             if style_id == "w1_whiteboard":
                 scenes = [
@@ -753,25 +793,25 @@ class MuseClient:
                         "scene_index": 3,
                         "time_range": "9.5-14.5",
                         "duration_sec": 5.0,
-                        "narration_segment": f"底层逻辑非常清晰：{plain_text[:50]}",
-                        "primary_subject": "机制拆解与因果箭头流程",
-                        "visual_action": "画笔书写因果递进逻辑链，手绘箭头平滑舒展",
+                        "narration_segment": f"底层逻辑非常清晰：{clean_logic}",
+                        "primary_subject": "安全带与汽车碰撞受力防护机制",
+                        "visual_action": "画笔流畅绘制汽车侧身线稿与安全带插销，线条生动清晰",
                         "motion_type_mode": "whiteboard",
                         "board_spec": {
                             "board_title": "底层逻辑",
                             "underline_accent": "#7BC8A4",
-                            "key_subject": "因果箭头",
-                            "board_keywords": "科学机制",
+                            "key_subject": "汽车安全",
+                            "board_keywords": "汽车 安全带 车祸防护",
                             "whitespace_ratio": "65%",
-                            "hand_action": "画笔书写递进箭头"
+                            "hand_action": "画笔绘制汽车与安全带"
                         },
                         "kinetic_typography": {
                             "text": "底层逻辑",
                             "style": "handdrawn_write",
                             "position": "center"
                         },
-                        "image_prompt": f"minimalist whiteboard diagram showing cause and effect arrow, black lines on warm ivory paper, clean minimalist doodle, vertical 9:16",
-                        "video_motion_prompt": "Stylus pen smoothly tracing flow arrow"
+                        "image_prompt": f"minimalist whiteboard automobile car sketch, clean outline on warm ivory paper, clean minimalist doodle, vertical 9:16",
+                        "video_motion_prompt": "Stylus pen smoothly tracing car body"
                     },
                     {
                         "scene_index": 4,
@@ -801,7 +841,7 @@ class MuseClient:
                         "scene_index": 5,
                         "time_range": "20.0-25.0",
                         "duration_sec": 5.0,
-                        "narration_segment": f"执行成本：{cost_desc}；而收益却是：{benefit_desc[:40]}。",
+                        "narration_segment": f"执行成本：{clean_cost}；而收益却是：{clean_benefit}",
                         "primary_subject": "投入与产出天平对比示意",
                         "visual_action": "画笔绘制简洁天平，零成本带来高确定性",
                         "motion_type_mode": "whiteboard",

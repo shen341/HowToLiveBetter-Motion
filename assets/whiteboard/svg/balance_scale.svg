@@ -1,0 +1,15 @@
+<svg viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg">
+        <!-- Base Stand -->
+        <line x1="45" y1="12" x2="45" y2="58" />
+        <path d="M 32,64 L 45,58 L 58,64 Z" />
+        <!-- Top Beam (Slightly tilted up to right) -->
+        <line x1="12" y1="22" x2="78" y2="14" />
+        <!-- Left Pan Strings & Plate (Cost) -->
+        <line x1="12" y1="22" x2="6" y2="42" />
+        <line x1="12" y1="22" x2="20" y2="42" />
+        <path d="M 4,42 C 4,48 22,48 22,42 Z" />
+        <!-- Right Pan Strings & Plate (Benefit, heavier/bigger) -->
+        <line x1="78" y1="14" x2="70" y2="38" />
+        <line x1="78" y1="14" x2="86" y2="38" />
+        <path d="M 66,38 C 66,48 90,48 90,38 Z" />
+    </svg>
