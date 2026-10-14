@@ -670,6 +670,60 @@ class WhiteboardLayoutEngine:
             elif matched_icon == "heart_pulse":
                 draw.text((cx, cy + 180), "守护生命健康", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
                 draw.text((cx, cy + 230), "将非受控风险降至最低", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "abdominal_feeling":
+                draw.text((cx, cy + 180), "身体预警信号", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "关注内脏微小不适", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon in ("bank-card", "bank_card"):
+                draw.text((cx, cy + 180), "资金与财务底线", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "理性消费 严守本金", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "crying_feeling":
+                draw.text((cx, cy + 180), "情绪觉察与释放", fill=(160, 95, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "正视悲伤 及时疏导", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "gambling":
+                draw.text((cx, cy + 180), "拒绝负期望博弈", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "概率陷阱是确定性亏损", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "happy_feeling":
+                draw.text((cx, cy + 180), "正向反馈与喜悦", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "微小胜利铸就长久习惯", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "hospital":
+                draw.text((cx, cy + 180), "专业医疗机构介入", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "早筛早查 遵从医嘱", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "aids":
+                draw.text((cx, cy + 180), "疾病防控与阻断", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "科学预防 杜绝感染", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "drug":
+                draw.text((cx, cy + 180), "药物与疫苗防护", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "遵医嘱规范用药", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "help":
+                draw.text((cx, cy + 180), "积极互助与求助", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "及时求援 走出困境", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon in ("medical-examination", "medical_examination"):
+                draw.text((cx, cy + 180), "医疗体检与筛查", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "早发现早干预是金标准", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "motor":
+                draw.text((cx, cy + 180), "两轮骑行安全第一", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "佩戴头盔 减速慢行", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon in ("metal-bar", "metal_bar"):
+                draw.text((cx, cy + 180), "金属与物理防护", fill=(100, 100, 100), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "注意重金属与外力风险", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon in ("radiation-alt", "radiation_alt"):
+                draw.text((cx, cy + 180), "远离有害辐射源", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "防护照射 保护机体", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "female":
+                draw.text((cx, cy + 180), "女性健康专项守护", fill=(160, 95, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "关爱女性 科学呵护", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "male":
+                draw.text((cx, cy + 180), "男性健康特征关注", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "定期筛查 警惕高危习惯", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "children":
+                draw.text((cx, cy + 180), "少儿与儿童健康成长", fill=(46, 117, 89), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "筑牢童年安全屏障", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon == "dead":
+                draw.text((cx, cy + 180), "致命风险严防死守", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "最大程度降低非受控死因", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
+            elif matched_icon in ("fall-down", "fall_down"):
+                draw.text((cx, cy + 180), "防跌倒与骨骼防护", fill=(180, 50, 50), font=self._get_font(34, bold=True), anchor="mm")
+                draw.text((cx, cy + 230), "避免外伤 骨质健康守护", fill=(100, 100, 100), font=self._get_font(26), anchor="mm")
             else:
                 lbl = key_subject or title_text[:8]
                 draw.text((cx, cy + 180), lbl, fill=(46, 117, 89), font=self._get_font(32, bold=True), anchor="mm")

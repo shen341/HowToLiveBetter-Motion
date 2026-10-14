@@ -1,11 +1,11 @@
 {
-  "export_time": "2026-10-14T22:24:49.227873",
+  "export_time": "2026-10-15T00:06:23.862966",
   "total_entries": 677,
   "status_summary": {
     "Approved": 23,
-    "Completed": 5,
-    "Media_Generated": 8,
-    "Pending": 640,
+    "Completed": 6,
+    "Media_Generated": 9,
+    "Pending": 638,
     "Script_Generated": 1,
     "Video_Assembled": 0,
     "Needs_Revision": 0,
@@ -16,7 +16,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 27
+      "completed_items": 28
     },
     {
       "chapter_index": 2,
@@ -579,7 +579,7 @@
       "evidence_grade": "B",
       "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-14T15:22:21.091524"
+      "updated_at": "2026-10-14T23:48:14.447439"
     },
     {
       "id": "01_034",
@@ -590,7 +590,7 @@
       "evidence_grade": "B",
       "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-14T18:28:33.877642"
+      "updated_at": "2026-10-14T23:54:40.576116"
     },
     {
       "id": "01_035",
@@ -621,9 +621,9 @@
       "item_index": 37,
       "title": "赌到借钱还赌、心情一直低落时，先打 12356，再把银行卡和支付密码交给家人管",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732449"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_037_不要早死之赌到借钱还赌、心情一直低落时，先打_12356，再把银行卡和支付密码交给家人管.mp4",
+      "updated_at": "2026-10-14T23:29:02.093263"
     },
     {
       "id": "01_038",
@@ -632,9 +632,9 @@
       "item_index": 38,
       "title": "有高危性行为的男男性行为者，去艾滋病定点医院问暴露前预防药，按时吃能少感染七成以上",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732484"
+      "updated_at": "2026-10-15T00:06:23.849307"
     },
     {
       "id": "01_039",

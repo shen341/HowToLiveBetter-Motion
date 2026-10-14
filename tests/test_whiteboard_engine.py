@@ -210,6 +210,40 @@ class TestSVGParserAndLibrary(unittest.TestCase):
         matched_cost = lib.match_icon("天平对比 投入产出 执行成本：不花钱，每次上车多花 2 秒；而收益却是：致命伤风险下降。", preferred_priority=["balance_scale"])
         self.assertEqual(matched_cost, "balance_scale")
 
+    def test_custom_svg_icons_semantic_matching(self):
+        """Verify user-added custom SVG icons match their specific Chinese domain keywords."""
+        from src.whiteboard.svg_library import SVGIconLibrary
+
+        lib = SVGIconLibrary()
+        cases = [
+            # Batch 1 (6 items)
+            ("生病、肚子疼、不舒服 等", "abdominal_feeling"),
+            ("银行卡、信用卡、卡片", "bank-card"),
+            ("哭泣、哭、悲伤", "crying_feeling"),
+            ("赌博、打牌、骰子", "gambling"),
+            ("开心、胜利、优秀", "happy_feeling"),
+            ("医院、卫生机构", "hospital"),
+            # Batch 2 (12 items)
+            ("艾滋病", "aids"),
+            ("药物、疫苗、药品", "drug"),
+            ("救助、帮助", "help"),
+            ("医疗检查、病情", "medical-examination"),
+            ("摩托车、电动车", "motor"),
+            ("金属", "metal-bar"),
+            ("放射源", "radiation-alt"),
+            ("女性、女人", "female"),
+            ("男性、男人", "male"),
+            ("儿童、小孩、少儿、幼儿", "children"),
+            ("死亡、死亡率", "dead"),
+            ("摔倒、骨折", "fall-down"),
+        ]
+        for query, expected_id in cases:
+            matched = lib.match_icon(query)
+            self.assertEqual(matched, expected_id, f"Query '{query}' expected '{expected_id}' but got '{matched}'")
+            strokes = lib.get_icon_strokes(query)
+            self.assertIsNotNone(strokes, f"Failed to get strokes for query '{query}'")
+            self.assertGreater(len(strokes), 0, f"Empty strokes for '{query}'")
+
 
 class TestSentenceExtractionNoTruncation(unittest.TestCase):
     """Test extract_complete_sentences ensures zero sentence truncation."""

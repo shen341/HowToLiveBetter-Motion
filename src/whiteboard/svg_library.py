@@ -148,6 +148,78 @@ SEMANTIC_KEYWORD_MAP: Dict[str, List[str]] = {
         "生命", "健康", "心跳", "存活", "救命", "保命", "猝死",
         "heart", "life", "health", "pulse"
     ],
+    # 9. Abdominal Feeling (生病、肚子疼、不舒服)
+    "abdominal_feeling": [
+        "生病", "肚子疼", "不舒服", "胃痛", "腹痛", "疼痛", "难受", "身体不适", "呕吐", "腹泻", "肠胃"
+    ],
+    # 10. Bank Card (银行卡、信用卡、卡片)
+    "bank-card": [
+        "银行卡", "信用卡", "卡片", "借记卡", "刷卡", "转账", "消费", "开销", "资金", "买单"
+    ],
+    # 11. Crying Feeling (哭泣、哭、悲伤)
+    "crying_feeling": [
+        "哭泣", "哭", "悲伤", "难过", "流泪", "痛苦", "沮丧", "伤心", "崩溃", "抑郁"
+    ],
+    # 12. Gambling (赌博、打牌、骰子)
+    "gambling": [
+        "赌博", "打牌", "骰子", "下注", "博弈", "押注", "轮盘", "抽奖", "筹码", "牌局"
+    ],
+    # 13. Happy Feeling (开心、胜利、优秀)
+    "happy_feeling": [
+        "开心", "胜利", "优秀", "快乐", "喜悦", "成功", "庆祝", "积极", "点赞", "好心情"
+    ],
+    # 14. Hospital (医院、卫生机构)
+    "hospital": [
+        "医院", "卫生机构", "看病", "诊所", "就医", "急救", "门诊", "医生", "医护", "医疗机构"
+    ],
+    # 15. AIDS (艾滋病)
+    "aids": [
+        "艾滋病", "艾滋", "hiv", "获得性免疫缺陷", "阻断药", "血液传染", "免疫缺陷"
+    ],
+    # 16. Drug (药物、疫苗、药品)
+    "drug": [
+        "药物", "疫苗", "药品", "吃药", "抗生素", "止痛药", "处方药", "胶囊", "西药", "药丸", "服药"
+    ],
+    # 17. Help (救助、帮助)
+    "help": [
+        "救助", "帮助", "援助", "扶持", "求助", "协助", "援手", "关照", "支持", "互助"
+    ],
+    # 18. Medical Examination (医疗检查、病情)
+    "medical-examination": [
+        "医疗检查", "体检", "病情", "检查", "问诊", "诊断", "化验", "查体", "筛查", "病历"
+    ],
+    # 19. Motor (摩托车、电动车)
+    "motor": [
+        "摩托车", "电动车", "机车", "电瓶车", "骑车", "二轮车", "两轮", "骑行", "头盔"
+    ],
+    # 20. Metal Bar (金属)
+    "metal-bar": [
+        "金属", "铁", "钢", "铅", "重金属", "合金", "金属栏杆", "金属棒"
+    ],
+    # 21. Radiation Alt (放射源)
+    "radiation-alt": [
+        "放射源", "辐射", "核辐射", "放射线", "射线", "电离辐射", "放射性", "防辐射"
+    ],
+    # 22. Female (女性、女人)
+    "female": [
+        "女性", "女人", "女士", "妇女", "女孩", "母婴", "产妇", "女"
+    ],
+    # 23. Male (男性、男人)
+    "male": [
+        "男性", "男人", "男士", "男子", "男孩", "男"
+    ],
+    # 24. Children (儿童、小孩、少儿、幼儿)
+    "children": [
+        "儿童", "小孩", "少儿", "幼儿", "孩子", "婴儿", "青少年", "童年", "学龄前"
+    ],
+    # 25. Dead (死亡、死亡率)
+    "dead": [
+        "死亡", "死亡率", "丧命", "致命", "去世", "遇难", "致死", "身亡", "致死率", "死因"
+    ],
+    # 26. Fall Down (摔倒、骨折)
+    "fall-down": [
+        "摔倒", "骨折", "跌倒", "滑倒", "骨裂", "扭伤", "摔伤", "跌伤", "外伤"
+    ],
 }
 
 
@@ -171,15 +243,24 @@ class SVGIconLibrary:
                     pass
 
     def get_svg_content(self, icon_name: str) -> Optional[str]:
-        """Fetch SVG XML content from disk or built-in registry."""
-        file_path = os.path.join(self.asset_dir, f"{icon_name}.svg")
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    return f.read()
-            except Exception:
-                pass
-        return BUILTIN_SVGS.get(icon_name)
+        """Fetch SVG XML content from disk or built-in registry with flexible naming."""
+        clean_name = icon_name.lower().strip()
+        candidates = [
+            clean_name,
+            clean_name.replace("_", "-"),
+            clean_name.replace("-", "_")
+        ]
+        for name in candidates:
+            file_path = os.path.join(self.asset_dir, f"{name}.svg")
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        return f.read()
+                except Exception:
+                    pass
+            if name in BUILTIN_SVGS:
+                return BUILTIN_SVGS[name]
+        return None
 
     def match_icon(self, text: str, preferred_priority: Optional[List[str]] = None) -> Optional[str]:
         """
@@ -228,17 +309,19 @@ class SVGIconLibrary:
         """
         Retrieve and scale vector stroke polyline paths for an icon by name or keyword.
         """
-        # 1. Direct icon name lookup
         icon_name = icon_name_or_keyword.lower().strip()
-        if icon_name not in BUILTIN_SVGS:
-            # 2. Try semantic matching
+
+        # 1. Direct file or built-in lookup first
+        svg_content = self.get_svg_content(icon_name)
+        if not svg_content:
+            # 2. Try semantic matching if not an explicit filename/icon_id
             matched = self.match_icon(icon_name_or_keyword)
             if matched:
                 icon_name = matched
+                svg_content = self.get_svg_content(icon_name)
             else:
                 return None
 
-        svg_content = self.get_svg_content(icon_name)
         if not svg_content:
             return None
 

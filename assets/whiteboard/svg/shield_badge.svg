@@ -1,8 +1,2 @@
-<svg viewBox="0 0 80 90" xmlns="http://www.w3.org/2000/svg">
-        <!-- Outer Shield -->
-        <path d="M 40,6 C 58,6 72,12 72,12 C 72,50 56,76 40,84 C 24,76 8,50 8,12 C 8,12 22,6 40,6 Z" />
-        <!-- Inner Shield Ribbon -->
-        <path d="M 40,14 C 54,14 64,18 64,18 C 64,48 50,70 40,76 C 30,70 16,48 16,18 C 16,18 26,14 40,14 Z" />
-        <!-- Star / Grade Symbol in Center -->
-        <path d="M 40,28 L 43,38 L 53,38 L 45,44 L 48,54 L 40,48 L 32,54 L 35,44 L 27,38 L 37,38 Z" />
-    </svg>
+<?xml version="1.0" encoding="utf-8"?><!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#000000" stroke-width="1" stroke-linecap="round" stroke-linejoin="miter"><path d="M12,2,3,5v5.11a11,11,0,0,0,4.9,9.16L12,22l4.1-2.73A11,11,0,0,0,21,10.11V5Z" fill="#059cf7" opacity="0.1" stroke-width="0"></path><path d="M12,2,3,5v5.11a11,11,0,0,0,4.9,9.16L12,22l4.1-2.73A11,11,0,0,0,21,10.11V5Z"></path></svg>

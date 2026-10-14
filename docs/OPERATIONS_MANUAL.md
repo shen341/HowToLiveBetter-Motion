@@ -118,6 +118,10 @@ python 02_ai_generator.py --entry-id 01_001 --mock --force
 # 2.7 图生视频 (I2V) 混合动态微动模式调度 (ADR-010)
 # static: 纯静态原画+运镜(默认); i2v-tier1: 仅第1/5幕物理微动(推荐高性价比); i2v-all: 全片6幕微动
 python 02_ai_generator.py --entry-id 01_001 --motion-mode i2v-tier1
+
+# 2.8 极简手绘白板全动效模式 (TASK-5.4)
+# 自动匹配具象 SVG 矢量图形（如汽车、安全带、天平等），并由纯金属触控笔以 30fps 逐帧实时勾勒
+python 02_ai_generator.py --entry-id 01_001 --motion-mode whiteboard --force
 ```
 
 - **输出产物**（存放于 `output/raw_assets/{entry_id}/`）：
@@ -206,6 +210,7 @@ python -m src.copywriter --entry-id 01_001 --force
 | **`24_hopper`** | 霍珀美国现实主义风 | 强烈斜射几何光影、市井生活写实、克制沉思 | 都市打工人、独处与内心压力、人际交往 |
 | **`17_ink`** | 新中式东方水墨风 | 水墨晕染留白、淡雅设色、东方哲学从容意境 | 处世哲学、断舍离、心态调适、中式养生 |
 | **`14_pixel`** | 8-Bit 像素复古游戏风 | 精致复古像素点阵、街机闯关界面感、轻松有趣 | 习惯打卡、微小行动积累、目标达成游戏化 |
+| **`w1_whiteboard`** | 极简手绘白板风 | 暖调米白宣纸底板、极简黑线线稿、大面积呼吸留白(>=65%)、纯金属触控笔写画 | 认知盲区、底层逻辑、科学因果、极高性价比行动 |
 
 ### 调度命令范式：
 ```powershell
@@ -220,6 +225,57 @@ python 02_ai_generator.py --entry-id 01_001 --style chapter
 # 模式 C：【人工强制指定】
 # 强制采用 Vox 剪报风做视觉效果对比
 python 02_ai_generator.py --entry-id 01_001 --style y2_vox --force
+```
+
+---
+
+## 4.5 极简手绘白板全动效模式操作指南 (Zen Whiteboard Motion Guide)
+
+### 4.5.1 核心设计理念
+- **突破 I2V 瓶颈**：传统图生视频 (I2V) 存在高算力成本与 AI 画面文字畸变（AI Slop）问题；静态图文容易产生视觉疲劳。
+- **禅意美学与留白**：画幅保持 $\ge 65\%\sim 75\%$ 呼吸留白，米白宣纸底板（`#FAF8F5`），避免任何视觉冗余与画面拥挤，让观众更容易深入沉思。
+- **去拟真手模，纯金属触控笔**：去除矩形硬切边的人类手模与多余遮挡，采用轻量现代的**纯金属触控笔（Metallic Stylus）**在纸面上优雅书写，笔尖微动自然（带有 $\pm0.6\text{px}$ 有机微抖动与落笔升空过渡）。
+- **标点意群完整闭合**：采用智能标点规整算法，杜绝从句腰部硬切截断，每幕旁白皆为语义自洽、干脆有力的完整句子。
+
+### 4.5.2 具象 SVG 矢量图库与名词语义自动联想
+白板模式突破了纯几何图形（圆、方、三角）的单调局限，实现了**基于分镜关键词的实体名词具象写画**：
+1. **语义倒排联想匹配**：系统解析分镜标题、关键词、分镜主体及口播文本（例如：“安全带”、“车祸” -> 自动联想并匹配 **`automobile`（汽车）**；“权威认证” -> 匹配 **`shield_badge`（盾牌）**；“投入产出” -> 匹配 **`balance_scale`（天平）**）。
+2. **纯 Python SVG 路径解析器 (`src/whiteboard/svg_parser.py`)**：零外部依赖，直接解析标准 SVG 中的 Path 贝塞尔曲线、圆、矩形与折线，自适应等比缩放并居中投影到 1080×1920 竖屏画布。
+3. **内置矢量资产目录 (`assets/whiteboard/svg/`)**：
+   - `automobile.svg`：精致小轿车侧身轮廓、车窗分隔与轮毂线稿；
+   - `seatbelt.svg`：对角斜拉安全带织带与插舌卡扣；
+   - `crash_warning.svg`：警示三角与感叹号；
+   - `shield_badge.svg`：权威证据等级盾牌与缎带；
+   - `balance_scale.svg`：成本与收益轻重对比天平；
+   - `clock_time.svg`：2 秒快速习惯秒表；
+   - `checkmark_circle.svg`：行动是唯一解圆形对勾；
+   - `heart_pulse.svg`：生命健康心跳脉冲。
+
+### 4.5.3 像素图（PNG/JPG）转 SVG 矢量图与写画工作流
+创作者常问：*“这个手绘图形很棒，是像素图生成的吗？能否将本地 SD 生成的像素图转为 SVG 后驱动写画？”*
+- **现有机制说明**：成片中绘制的图形**直接来源于高精度的 SVG 矢量数学曲线**，因此在 1080×1920 高清竖屏下放大毫无马赛克毛边，触控笔能严格顺着矢量控制点逐帧描画。
+- **从 SD/LoRA 像素图到 SVG 动画的完整扩充工作流**：
+  ```
+  [SD / ComfyUI LoRA] ──► [高反差白底黑线 PNG] ──► [矢量化工具 (vtracer/potrace)] ──► [*.svg 存入 assets/whiteboard/svg/] ──► [触控笔逐帧写画]
+  ```
+  1. **步骤 1：本地 SD/LoRA 生成线稿**：在本地 ComfyUI 中使用白板线稿 LoRA（如 `whiteboard_doodle_v1.safetensors`），生成纯白底（`#FFFFFF`）、高对比度黑色单线稿 PNG。
+  2. **步骤 2：自动矢量化提取**：
+     - 工具推荐：使用开源 `vtracer`（`pip install vtracer`）或 `potrace` 命令行工具：
+       ```powershell
+       vtracer --input input_sketch.png --output assets/whiteboard/svg/new_icon.svg --colormode binary
+       ```
+  3. **步骤 3：注册语义关键词**：在 [`src/whiteboard/svg_library.py`](file:///c:/develop/HowToLiveBetter-Motion/src/whiteboard/svg_library.py) 的 `SEMANTIC_KEYWORD_MAP` 中添加该图素的中文/英文关联词即可。
+
+### 4.5.4 白板模式一键生产 SOP
+```powershell
+# 1. 抽取数据（若尚未初始化）
+python 01_data_extractor.py --chapter 1
+
+# 2. 生成手绘白板分镜与写画切片
+python 02_ai_generator.py --entry-id 01_001 --motion-mode whiteboard --force
+
+# 3. 合成 1080x1920 完整 MP4 视频
+python 03_video_assembler.py --entry-id 01_001
 ```
 
 ---
@@ -409,6 +465,23 @@ streamlit run 04_review_dashboard.py
 - **解决对策（已落地双重防护）**：
   1. **反代服务端自动嗅探并点击（Self-Healing Auto-Click）**：`muse2api` 的 `_wait_attachment` 轮询已内置交互建议检测器，0.5 秒内自动匹配并点击“生成替代版”交互按钮，自动延长超时并给予宽限期，无需人工介入即可顺利出图；
   2. **上游分镜生成源头安全隐喻化**：[`src/prompt_builder.py`](file:///c:/develop/HowToLiveBetter-Motion/src/prompt_builder.py) 已内置安全隐喻转换铁律（严禁直接出现烟草/吸烟/开放性创伤词汇，统一自动改写为“倒扣的洁净空烟灰缸”、“无烟健康日历”、“温和医生问诊报告”等积极意象），从源头 100% 避免触发审查，提升生成速度。
+
+### Q11: 如何扩充白板模式的 SVG 图库？能否直接放入自定义 SVG 或将 SD 像素图转为矢量？
+- **机制说明**：成片中绘制的图形（如汽车、安全带等）**直接来源于高精度的 SVG 矢量数学曲线**，因此在 1080×1920 高清竖屏下放大毫无马赛克毛边，触控笔能严格顺着矢量控制点逐帧描画。
+- **扩展方式 A：直接加入自定义 SVG 矢量文件**：
+  1. 将任意标准 `.svg` 矢量文件（如从 [SVGRepo](https://www.svgrepo.com/)、Iconfont 下载的线条图，或 Illustrator/Figma 绘制的矢量图）保存到 `assets/whiteboard/svg/{icon_name}.svg`；
+  2. 打开 [`src/whiteboard/svg_library.py`](file:///c:/develop/HowToLiveBetter-Motion/src/whiteboard/svg_library.py)，在 `SEMANTIC_KEYWORD_MAP` 中添加该图素的中文/英文关联词（如 `"airplane": ["飞机", "航线", "出行", "出差"]`）；
+  3. 重新运行白板生成命令，系统即会自动匹配并在分镜中由金属触控笔逐帧写画。
+- **扩展方式 B：将本地 SD 生成的像素图转为 SVG 矢量**：
+  1. 本地 Stable Diffusion / ComfyUI 生成高反差黑白线稿图（PNG/JPG）；
+  2. 使用命令行矢量化工具转换为 SVG：
+     ```powershell
+     # 使用开源 vtracer 快速将黑白位图矢量化
+     pip install vtracer
+     vtracer --input my_sketch.png --output assets/whiteboard/svg/my_icon.svg --colormode binary
+     ```
+  3. 系统底层解析器自动兼容三次贝塞尔曲线及折线，无缝转化为触控笔轨迹。
+
 
 
 
