@@ -77,8 +77,8 @@ API_RETRY_DELAY = float(os.getenv("API_RETRY_DELAY", "2.0"))       # Initial bac
 # Platform Video Preset Configuration (TASK-4.4)
 DEFAULT_PLATFORM_PRESET = os.getenv("PLATFORM_PRESET", "default")   # default / xhs / douyin / wechat / bilibili
 
-# Motion Mode Configuration (TASK-5.0: I2V Hybrid Motion)
-DEFAULT_MOTION_MODE = os.getenv("MOTION_MODE", "static")  # static / i2v-tier1 / i2v-all
+# Motion Mode Configuration (TASK-5.0: I2V Hybrid Motion & TASK-5.4: Whiteboard Smooth Motion)
+DEFAULT_MOTION_MODE = os.getenv("MOTION_MODE", "static")  # static / i2v-tier1 / i2v-all / whiteboard
 
 OUTPUT_RAW_ASSETS_DIR = os.path.join(ROOT_DIR, "output", "raw_assets")
 OUTPUT_FINAL_VIDEOS_DIR = os.path.join(ROOT_DIR, "output", "final_videos")

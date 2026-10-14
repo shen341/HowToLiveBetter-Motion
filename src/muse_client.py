@@ -40,12 +40,27 @@ from src.prompt_builder import (
     STYLE_RECIPES,
     build_system_prompt,
     build_user_prompt,
+    build_whiteboard_system_prompt,
+    build_whiteboard_user_prompt,
     get_style_recipe,
     recommend_style_for_entry,
 )
 from src.rate_limiter import TokenBucketLimiter, _safe_print, retry_with_backoff
 
 print = _safe_print
+
+
+def is_whiteboard_scene(scene_index: int, total_scenes: int = 6, motion_mode: str = "static") -> bool:
+    """Determine whether a scene qualifies for Whiteboard smooth motion drawing.
+
+    Args:
+        scene_index: 1-indexed scene position (e.g. 1 to 6).
+        total_scenes: Total number of scenes in the storyboard.
+        motion_mode:
+            - 'whiteboard': Smooth whiteboard doodle animation
+    """
+    mode = (motion_mode or "").lower().strip()
+    return mode == "whiteboard"
 
 
 def is_i2v_scene(scene_index: int, total_scenes: int = 6, motion_mode: str = "static") -> bool:
@@ -58,9 +73,10 @@ def is_i2v_scene(scene_index: int, total_scenes: int = 6, motion_mode: str = "st
             - 'static': Ken Burns only (no video API calls, default)
             - 'i2v-tier1': Scenes 1 & 5 only (The Hook and Action demonstration)
             - 'i2v-all': All scenes generate I2V video
+            - 'whiteboard': Handdrawn smooth animation (never triggers I2V)
     """
     mode = (motion_mode or "").lower().strip()
-    if mode in ("static", "none", "off", "ken_burns", ""):
+    if mode in ("static", "none", "off", "ken_burns", "whiteboard", ""):
         return False
     if mode in ("i2v-all", "all", "full"):
         return True
@@ -146,19 +162,33 @@ class MuseClient:
         else:
             self.fallback_client = None
 
-    def generate_script(self, entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> Dict[str, Any]:
+    def generate_script(
+        self,
+        entry: Dict[str, Any],
+        style_mode: str = "auto",
+        scene_count: int = 6,
+        motion_mode: str = "static"
+    ) -> Dict[str, Any]:
         """Generate a structured storyboard JSON using local Ollama or muse-spark (with fallback to YourselfAI / rule-based).
         
         Args:
             entry: Entry data dictionary.
             style_mode: 'auto' (AI decides), 'chapter' (by chapter), or specific style ID.
             scene_count: Target number of storyboard scenes (default: 6 for Golden 6 Scenes).
+            motion_mode: Motion mode ('static', 'i2v-tier1', 'i2v-all', 'whiteboard').
         """
-        if self.mock:
-            return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count)
+        if motion_mode == "whiteboard" and style_mode == "auto":
+            style_mode = "w1_whiteboard"
 
-        system_prompt = build_system_prompt(scene_count=scene_count)
-        user_prompt = build_user_prompt(entry, style_mode=style_mode, scene_count=scene_count)
+        if self.mock:
+            return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count, motion_mode=motion_mode)
+
+        if motion_mode == "whiteboard" or style_mode == "w1_whiteboard":
+            system_prompt = build_whiteboard_system_prompt(scene_count=scene_count)
+            user_prompt = build_whiteboard_user_prompt(entry, scene_count=scene_count)
+        else:
+            system_prompt = build_system_prompt(scene_count=scene_count)
+            user_prompt = build_user_prompt(entry, style_mode=style_mode, scene_count=scene_count)
 
         # 1. 主路线: Local-Ollama (本地私有化), YourselfAI-Gemini (混合模式), 或 Muse-Spark (云端)
         if self.ai_mode == "local":
@@ -193,7 +223,9 @@ class MuseClient:
                 service_name=service_label,
                 limiter=self.limiter if self.ai_mode != "local" else None,
             )
-            return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode, scene_count=scene_count)
+            return self._clean_and_parse_json(
+                raw_content, entry, style_mode=style_mode, scene_count=scene_count, motion_mode=motion_mode
+            )
         except Exception as e:
             print(f"⚠️ [主线路 {service_label}] 遇到限速/拥堵或调用异常: {e}.")
 
@@ -225,13 +257,17 @@ class MuseClient:
                     limiter=None,
                 )
                 print(f"   ✅ [备选线路] 成功通过 {self.fallback_text_model} 生成分镜脚本！")
-                return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode, scene_count=scene_count)
+                return self._clean_and_parse_json(
+                    raw_content, entry, style_mode=style_mode, scene_count=scene_count, motion_mode=motion_mode
+                )
             except Exception as fb_err:
                 print(f"⚠️ [备选线路] 分镜脚本生成亦失败: {fb_err}.")
 
         # 3. 兜底降级: 规则驱动本地分镜
         print("⚠️ 降级为规则驱动的本地分镜脚本生成 (Mock Fallback)...")
-        return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count)
+        return self._mock_script_generation(
+            entry, style_mode=style_mode, scene_count=scene_count, motion_mode=motion_mode
+        )
 
     def _save_image_from_response(self, response: Any, output_path: str) -> str:
         """Helper to extract b64_json or url from ImagesResponse and write to disk."""
@@ -541,7 +577,14 @@ class MuseClient:
             print(f"⚠️ Live I2V video generation failed: {e}. Falling back to styled micro-motion synthesis...")
             return self._mock_video_generation(prompt, output_path, image_path, duration_sec)
 
-    def _clean_and_parse_json(self, raw_content: str, entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> Dict[str, Any]:
+    def _clean_and_parse_json(
+        self,
+        raw_content: str,
+        entry: Dict[str, Any],
+        style_mode: str = "auto",
+        scene_count: int = 6,
+        motion_mode: str = "static"
+    ) -> Dict[str, Any]:
         """Strip markdown fences and parse JSON robustly with multiple fallbacks."""
         clean = raw_content.strip()
         if clean.startswith("```"):
@@ -572,7 +615,9 @@ class MuseClient:
         if isinstance(obj, dict):
             # Validate and normalize style fields
             style_id = obj.get("art_style_id", "")
-            if not style_id or style_id not in STYLE_RECIPES:
+            if motion_mode == "whiteboard" or style_mode == "w1_whiteboard":
+                style_id = "w1_whiteboard"
+            elif not style_id or style_id not in STYLE_RECIPES:
                 if style_mode in STYLE_RECIPES:
                     style_id = style_mode
                 elif style_mode == "chapter":
@@ -583,14 +628,39 @@ class MuseClient:
             obj["art_style_id"] = style_id
             obj["art_style_name"] = recipe["name"]
             if not obj.get("art_style_reason"):
-                obj["art_style_reason"] = "AI 深度理解内容语义与情绪基调自主决策"
+                if style_id == "w1_whiteboard":
+                    obj["art_style_reason"] = "通过极简手绘线稿与大面积呼吸留白，将复杂枯燥的生活常识转化为一目了然的思维导图"
+                else:
+                    obj["art_style_reason"] = "AI 深度理解内容语义与情绪基调自主决策"
+
+            if motion_mode == "whiteboard":
+                for s in obj.get("scenes", []):
+                    s.setdefault("motion_type_mode", "whiteboard")
+                    if "board_spec" not in s:
+                        title_text = s.get("kinetic_typography", {}).get("text") or s.get("primary_subject", "关键要点")
+                        s["board_spec"] = {
+                            "board_title": title_text[:10],
+                            "underline_accent": "#E28743",
+                            "key_subject": s.get("primary_subject", "核心概念"),
+                            "board_keywords": title_text[:10],
+                            "whitespace_ratio": "70%",
+                            "hand_action": "画笔流畅书写"
+                        }
             return obj
 
         # 3. Fallback
         print("⚠️ Could not parse JSON from model output, using structured fallback.")
-        return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count)
+        return self._mock_script_generation(
+            entry, style_mode=style_mode, scene_count=scene_count, motion_mode=motion_mode
+        )
 
-    def _mock_script_generation(self, entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> Dict[str, Any]:
+    def _mock_script_generation(
+        self,
+        entry: Dict[str, Any],
+        style_mode: str = "auto",
+        scene_count: int = 6,
+        motion_mode: str = "static"
+    ) -> Dict[str, Any]:
         """Generate a realistic fallback storyboard conforming to huashu-art-motion standards."""
         chapter_index = entry.get("chapter_index", 1)
         chapter_title = entry.get("chapter_title", "生活指南")
@@ -601,7 +671,10 @@ class MuseClient:
         benefit_desc = entry.get("benefit_desc", "显著降低风险")
         evidence_grade = entry.get("evidence_grade", "A")
 
-        if style_mode in STYLE_RECIPES:
+        if motion_mode == "whiteboard" or style_mode == "w1_whiteboard":
+            style_id = "w1_whiteboard"
+            style_reason = "通过极简手绘线稿与大面积呼吸留白，将复杂枯燥的生活常识转化为一目了然的思维导图"
+        elif style_mode in STYLE_RECIPES:
             style_id = style_mode
             style_reason = f"用户手动指定风格【{style_id}】"
         elif style_mode == "chapter":
@@ -626,7 +699,155 @@ class MuseClient:
         video_title = f"{chapter_title}之{item_title}"
 
         if scene_count == 6:
-            scenes = [
+            if style_id == "w1_whiteboard":
+                scenes = [
+                    {
+                        "scene_index": 1,
+                        "time_range": "0.0-4.5",
+                        "duration_sec": 4.5,
+                        "narration_segment": f"高性价比人生建议：关于{item_title}，关键在于极简行动。",
+                        "primary_subject": f"{item_title}核心行动符号",
+                        "visual_action": "现代金属触控笔在纸质白板上流畅勾勒核心图素，笔触连贯清晰",
+                        "motion_type_mode": "whiteboard",
+                        "board_spec": {
+                            "board_title": item_title[:10],
+                            "underline_accent": "#E28743",
+                            "key_subject": item_title[:10],
+                            "board_keywords": "核心要点",
+                            "whitespace_ratio": "70%",
+                            "hand_action": "画笔流畅勾勒核心图素"
+                        },
+                        "kinetic_typography": {
+                            "text": item_title[:10],
+                            "style": "handdrawn_write",
+                            "position": "center_high"
+                        },
+                        "image_prompt": f"zen minimalist whiteboard doodle sketch of {item_title}, clean black pen line art on warm ivory paper #FAF8F5, ample negative space, elegant calm composition, vertical 9:16",
+                        "video_motion_prompt": "Stylus pen smoothly sketching lines, precise pen tip reveal, calm hold"
+                    },
+                    {
+                        "scene_index": 2,
+                        "time_range": "4.5-9.5",
+                        "duration_sec": 5.0,
+                        "narration_segment": "日常生活中我们往往忽略了关键动作，让潜在风险悄然累加。",
+                        "primary_subject": "日常认知误区与常见盲区对比",
+                        "visual_action": "画笔绘制警示对比框，线条一气呵成",
+                        "motion_type_mode": "whiteboard",
+                        "board_spec": {
+                            "board_title": "认知误区",
+                            "underline_accent": "#E28743",
+                            "key_subject": "盲区对比",
+                            "board_keywords": "常见误区",
+                            "whitespace_ratio": "68%",
+                            "hand_action": "画笔绘制警示框"
+                        },
+                        "kinetic_typography": {
+                            "text": "认知误区",
+                            "style": "handdrawn_write",
+                            "position": "center"
+                        },
+                        "image_prompt": f"zen minimalist whiteboard sketch showing cognitive pitfall, simple black line drawing on ivory background, ample negative space, clean typography, 9:16 vertical ratio",
+                        "video_motion_prompt": "Stylus pen drawing box and question mark smoothly"
+                    },
+                    {
+                        "scene_index": 3,
+                        "time_range": "9.5-14.5",
+                        "duration_sec": 5.0,
+                        "narration_segment": f"底层逻辑非常清晰：{plain_text[:50]}",
+                        "primary_subject": "机制拆解与因果箭头流程",
+                        "visual_action": "画笔书写因果递进逻辑链，手绘箭头平滑舒展",
+                        "motion_type_mode": "whiteboard",
+                        "board_spec": {
+                            "board_title": "底层逻辑",
+                            "underline_accent": "#7BC8A4",
+                            "key_subject": "因果箭头",
+                            "board_keywords": "科学机制",
+                            "whitespace_ratio": "65%",
+                            "hand_action": "画笔书写递进箭头"
+                        },
+                        "kinetic_typography": {
+                            "text": "底层逻辑",
+                            "style": "handdrawn_write",
+                            "position": "center"
+                        },
+                        "image_prompt": f"minimalist whiteboard diagram showing cause and effect arrow, black lines on warm ivory paper, clean minimalist doodle, vertical 9:16",
+                        "video_motion_prompt": "Stylus pen smoothly tracing flow arrow"
+                    },
+                    {
+                        "scene_index": 4,
+                        "time_range": "14.5-20.0",
+                        "duration_sec": 5.5,
+                        "narration_segment": f"证据等级达到 {evidence_grade} 级硬核标准，权威数据真实可信。",
+                        "primary_subject": f"证据等级 {evidence_grade} 级权威手绘徽章",
+                        "visual_action": "画笔快速勾勒盾牌徽章与评级大字，金属笔尖微光闪烁",
+                        "motion_type_mode": "whiteboard",
+                        "board_spec": {
+                            "board_title": f"证据 {evidence_grade} 级",
+                            "underline_accent": "#7BC8A4",
+                            "key_subject": "权威徽章",
+                            "board_keywords": f"Grade {evidence_grade}",
+                            "whitespace_ratio": "70%",
+                            "hand_action": "画笔勾勒盾牌徽章"
+                        },
+                        "kinetic_typography": {
+                            "text": f"证据 {evidence_grade} 级",
+                            "style": "handdrawn_write",
+                            "position": "center"
+                        },
+                        "image_prompt": f"minimalist whiteboard doodle badge with letter {evidence_grade}, hand drawn simple shield, clean line art on ivory paper #FAF8F5, vertical 9:16",
+                        "video_motion_prompt": "Stylus pen sketching shield outline smoothly"
+                    },
+                    {
+                        "scene_index": 5,
+                        "time_range": "20.0-25.0",
+                        "duration_sec": 5.0,
+                        "narration_segment": f"执行成本：{cost_desc}；而收益却是：{benefit_desc[:40]}。",
+                        "primary_subject": "投入与产出天平对比示意",
+                        "visual_action": "画笔绘制简洁天平，零成本带来高确定性",
+                        "motion_type_mode": "whiteboard",
+                        "board_spec": {
+                            "board_title": "极低成本",
+                            "underline_accent": "#E28743",
+                            "key_subject": "天平对比",
+                            "board_keywords": "超高性价比",
+                            "whitespace_ratio": "68%",
+                            "hand_action": "画笔勾勒天平"
+                        },
+                        "kinetic_typography": {
+                            "text": "极低成本",
+                            "style": "handdrawn_write",
+                            "position": "center"
+                        },
+                        "image_prompt": f"minimalist handdrawn scale showing low cost and high return, clean doodle sketch on ivory canvas, ample negative space, vertical 9:16",
+                        "video_motion_prompt": "Stylus pen drawing scale beam"
+                    },
+                    {
+                        "scene_index": 6,
+                        "time_range": "25.0-30.0",
+                        "duration_sec": 5.0,
+                        "narration_segment": "高性价比人生：用最少的代价换回最大的确定性，行动是唯一解。",
+                        "primary_subject": "核心行动金句手绘落款与对勾标记",
+                        "visual_action": "画笔打下坚定醒目的对勾标记，随后平滑升空移出画布",
+                        "motion_type_mode": "whiteboard",
+                        "board_spec": {
+                            "board_title": "行动是唯一解",
+                            "underline_accent": "#7BC8A4",
+                            "key_subject": "确定对勾",
+                            "board_keywords": "立即行动",
+                            "whitespace_ratio": "72%",
+                            "hand_action": "画笔打勾后升空离场"
+                        },
+                        "kinetic_typography": {
+                            "text": "行动是唯一解",
+                            "style": "handdrawn_write",
+                            "position": "center"
+                        },
+                        "image_prompt": f"zen minimalist whiteboard layout with big checkmark, clean line art, peaceful ivory negative space, elegant composition, vertical 9:16",
+                        "video_motion_prompt": "Stylus pen drawing bold checkmark and flying off canvas"
+                    }
+                ]
+            else:
+                scenes = [
                 {
                     "scene_index": 1,
                     "time_range": "0.0-4.5",

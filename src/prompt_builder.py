@@ -52,8 +52,16 @@ STYLE_RECIPES = {
         "suitable_for": "习惯打卡、微小行动积累、目标达成、游戏化生活类条目",
         "keywords": "detailed 16-bit pixel art style, nostalgic retro game aesthetic, vibrant palette, clean isometric or side-view composition, charming playful details",
         "negative": "blurry, smooth photorealistic, soft watercolor, dark gloomy, watermark"
+    },
+    "w1_whiteboard": {
+        "name": "极简手绘白板风",
+        "description": "米白护眼纸底、大量高级呼吸留白、单幕仅保留1-2个核心实体、极简黑线线稿、克制马卡龙强调色、引发深思与克制感",
+        "suitable_for": "硬核科普、思维导图、设计取舍、底层机理、人生取舍、决策权衡类条目",
+        "keywords": "zen minimalist whiteboard doodle art, clean ivory off-white paper texture, ample negative space, intentional emptiness for contemplation, isolated single iconic subject, crisp black outline sketch, subtle pastel color accents, zen minimalist composition, no background clutter, elegant hand-drawn diagram",
+        "negative": "crowded, cluttered composition, too many objects, photorealistic, complex shading, dark gloomy background, neon glow, 3d glossy, messy lines, watermark, text"
     }
 }
+
 
 
 def get_style_recipe(style_id: str) -> Dict[str, Any]:
@@ -223,5 +231,116 @@ def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto", scene_cou
 【强制输出与抑制工具约束】:
 请直接以纯文本 JSON 格式输出短视频分镜脚本，禁止调用任何系统工具、不要更新规则记忆文件（严禁编辑任何 MEMORY.md），直接回复最终内容。
 标题统一命名为："{chapter_title}之{item_title}"。"""
+
+
+def build_whiteboard_system_prompt(scene_count: int = 6) -> str:
+    """Specialized system prompt for Whiteboard Doodle Explainer with Zen minimalism and ample negative space."""
+    return f"""你是一位顶级知识科普手绘白板总导演兼板书视觉设计大师，精通“极简白板讲解（Whiteboard Doodle Explainer）”的视觉叙事与板书美学。
+你的任务是将人生指南条目，转化为一份极具深思韵味、留白呼吸感充足、绝无视觉拥挤与 AI 劣质杂质的手绘白板分镜脚本。
+
+【绝对禁令与防 Agent 跑偏原则（最高优先级）】
+1. **纯文本直接输出**：必须在当前会话中直接以纯文本 JSON 格式返回最终的分镜脚本结果，严禁输出任何思考过程、自我总结或无关前缀。
+2. **严禁调用系统工具**：严禁调用任何后台系统工具、文件修改命令、终端命令或沙盒脚本。
+3. **严禁写入或更新记忆文件**：严禁创建、读取、编辑或追加任何 MEMORY.md 文件。
+
+【手绘白板核心设计铁律】
+1. **留白哲学与深思留韵 (Zen Minimalism & Negative Space)**：
+   - **画中物品或人物绝对不要多，单幕只留下 1~2 个最关键的具象符号或概念实体！**
+   - **画布必须留出 60%~75% 的大面积纯净米白底色空白**。留白不是空无，而是让观众视线聚拢在核心思想上，引发深思与克制感。
+   - 严禁任何繁复装饰花纹、杂乱桌面背景、多人物群像或冗余堆砌！
+2. **极简色板与手绘质感**：
+   - 底色锁定：浅米白护眼纸质纹理（`#FAF7F2`）。
+   - 线条：纯黑/炭灰色手绘线稿（`#1A1A1A`），圆润自然的简笔描边。
+   - 点缀色：极其克制的马卡龙/复古莫兰迪单重点色（如薄荷绿 `#7BC8A4`、纸飞机的浅天蓝 `#A8D0E6`、标题划线的暖橙 `#E28743`）。
+3. **字字珠玑的顿挫口播 (Rhythmic & Paced Copywriting)**：
+   - 拒斥密不透风的密集解说。口播文本精炼至 12~16 字短句，语气从容笃定，为画手运笔和观众理解留出停顿呼吸感。
+4. **黄金六幕板书结构化协议 (`board_spec`)**：
+   - 每一幕必须包含 `board_spec`，明确板书呈现要素：
+     * `board_title`: 顶部板书核心主题（如“几个设计取舍”）。
+     * `underline_accent`: 重点下划线颜色（十六进制，如 `#E28743`）。
+     * `key_subject`: 核心关键视觉实体（严禁多物，仅限 1 个关键物象，如“带光标点击的绿色保存按钮”、“小型服务器小电脑”、“折纸飞机”）。
+     * `board_keywords`: 板书极简关键词（2~6 字，如“唯一会写文件”、“家里小电脑”）。
+     * `whitespace_ratio`: 规划留白比例（如 "70%"）。
+     * `hand_action`: 画手拟真运笔动作（如“画手持触控笔正在绘制右侧拓扑三角网络节点”）。
+5. **多模态 Image Prompt 规范**：
+   - 英文生图提示词中必须显式注入：
+     `zen minimalist whiteboard doodle art, clean ivory off-white paper texture, ample negative space, isolated single iconic subject, crisp black outline sketch, subtle pastel color accents, zen minimalist composition, no background clutter, no text, no watermark`。
+
+【输出格式】
+你必须直接输出严格的 JSON 对象：
+{{
+  "entry_id": "01_001",
+  "video_title": "不要早死之系安全带，前排后排都系",
+  "target_duration_sec": 29,
+  "art_style_id": "w1_whiteboard",
+  "art_style_name": "极简手绘白板风",
+  "art_style_reason": "通过极简手绘线稿与大面积呼吸留白，将复杂枯燥的安全常识转化为一目了然的思维导图，引发观众深思",
+  "color_palette": ["#FAF7F2", "#1A1A1A", "#7BC8A4", "#E28743"],
+  "narration_text_full": "完整精炼旁白文本...",
+  "scenes": [
+    {{
+      "scene_index": 1,
+      "time_range": "0.0-4.5",
+      "duration_sec": 4.5,
+      "narration_segment": "精炼口播短句（12~16字）",
+      "primary_subject": "唯一关键实体（名词）",
+      "visual_action": "画手写画动作及镜头视觉",
+      "board_spec": {{
+        "board_title": "板书标题",
+        "underline_accent": "#E28743",
+        "key_subject": "极简单一实体",
+        "board_keywords": "板书关键短语",
+        "whitespace_ratio": "70%",
+        "hand_action": "画手持触控笔沿中心骨架绘制插销卡扣"
+      }},
+      "kinetic_typography": {{
+        "text": "板书大字",
+        "style": "handdrawn_write",
+        "position": "center_high"
+      }},
+      "image_prompt": "zen minimalist whiteboard doodle art, single isolated seatbelt buckle clicking, crisp black outline sketch, subtle mint green accent, clean ivory paper texture, ample negative space, no background clutter, pure white background...",
+      "video_motion_prompt": "Hand drawing motion from top to bottom, subtle pen stroke reveal, calm static hold"
+    }}
+  ]
+}}
+"""
+
+
+def build_whiteboard_user_prompt(entry: Dict[str, Any], scene_count: int = 6) -> str:
+    """Build user prompt tailored for Whiteboard Doodle Explainer."""
+    chapter_title = entry.get("chapter_title", "")
+    item_title = entry.get("title", "")
+    entry_id = entry.get("id", "")
+    cost_desc = entry.get("cost_desc", "不花钱")
+    plain_text = entry.get("plain_text", "")
+    benefit_desc = entry.get("benefit_desc", "")
+    evidence_grade = entry.get("evidence_grade", "A")
+    notes = entry.get("notes", "")
+
+    return f"""请将以下条目转化为 28~32 秒【极简手绘白板讲解】短视频分镜脚本：
+
+【条目编号】: {entry_id}
+【章节】: {chapter_title}
+【小条目标题】: {item_title}
+【成本情况】: {cost_desc}
+【说人话（核心要点）】: {plain_text}
+【权威收益与数据】: {benefit_desc}
+【证据等级】: {evidence_grade} 级
+【补充备注】: {notes}
+
+【白板讲解专属特别要求】:
+1. **画面留白与极简实体**：
+   - 严格遵循“少即是多”原则！每幕画面中**绝不要放置过多杂乱物品或人物，只保留 1~2 个最关键的具象概念符号**。
+   - 大面积（60%~75%）留出干净优雅的米白底色空白，让视觉极度聚焦，留出深思空间。
+2. **文案节奏与板书对应**：
+   - 口播字数适度精简（每幕 12~16 字），字字珠玑，为拟真画手的书写绘制和观众深思消化留出呼吸节奏。
+   - 每幕明确提炼 1 个 `board_keywords` 板书词与 1 个 `key_subject` 极简符号。
+3. **画风固定**：
+   - 固定使用 `w1_whiteboard` 极简手绘白板风。
+
+【强制输出与抑制工具约束】:
+请直接以纯文本 JSON 格式输出白板分镜脚本，禁止调用任何系统工具、不要更新规则记忆文件（严禁编辑任何 MEMORY.md），直接回复最终内容。
+标题统一命名为："{chapter_title}之{item_title}"。"""
+
 
 

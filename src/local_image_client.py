@@ -64,8 +64,15 @@ STYLE_LORA_PRESETS: Dict[str, Dict[str, Any]] = {
         "strength": 0.90,
         "trigger": "detailed 16-bit pixel art style, nostalgic retro game aesthetic, clean isometric composition",
         "default_negative": "blurry, smooth photorealistic, soft watercolor, dark gloomy, watermark"
+    },
+    "w1_whiteboard": {
+        "lora_name": "whiteboard_minimalist_doodle.safetensors",
+        "strength": 0.85,
+        "trigger": "zen minimalist whiteboard doodle art, clean ivory paper texture, ample negative space, isolated single iconic subject, crisp black outline sketch, subtle pastel color accents",
+        "default_negative": "crowded, cluttered composition, photorealistic, complex shading, dark gloomy background, neon glow, 3d glossy, watermark, text"
     }
 }
+
 
 
 class LocalImageClient:
