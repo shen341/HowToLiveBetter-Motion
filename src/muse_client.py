@@ -995,7 +995,7 @@ class MuseClient:
             "art_style_id": style_id,
             "art_style_name": style_info["name"],
             "art_style_reason": style_reason,
-            "color_palette": ["#1A365D", "#E2E8F0", "#319795", "#ED8936"],
+            "color_palette": ["#FAF8F5", "#1A1A1A", "#7BC8A4", "#E28743"] if style_id == "w1_whiteboard" else ["#1A365D", "#E2E8F0", "#319795", "#ED8936"],
             "narration_text_full": f"高性价比人生建议：{item_title}。{plain_text}。{cost_desc}，换来{benefit_desc}。证据等级 {evidence_grade} 级，转给在乎的人！",
             "scenes": scenes
         }

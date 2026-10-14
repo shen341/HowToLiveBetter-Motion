@@ -43,9 +43,11 @@ from src.db import (
     update_status,
 )
 from src.cover_generator import CoverGenerator
-from src.muse_client import MuseClient, is_i2v_scene
+from src.muse_client import MuseClient, is_i2v_scene, is_whiteboard_scene
 from src.srt_generator import SRTGenerator
 from src.tts_client import TTSClient
+from src.whiteboard.layout_engine import WhiteboardLayoutEngine
+from src.whiteboard.hand_compositor import HandCompositor
 
 
 def process_entry(
@@ -67,6 +69,9 @@ def process_entry(
     title = entry["title"]
     item_start_time = time.time()
 
+    if motion_mode == "whiteboard" and style_mode == "auto":
+        style_mode = "w1_whiteboard"
+
     print("=" * 65)
     print(f"🎬 [条目 {current_index}/{total_count}] 正在生成 [{entry_id}] 《{chapter_title}》 - {title}")
     print("=" * 65)
@@ -78,8 +83,10 @@ def process_entry(
     # 1. 生成分镜脚本 (调用 muse-spark 或 mock)
     try:
         t_script = time.time()
-        print(f"🧠 [步骤 1/3] 正在调用大模型生成结构化分镜脚本 (画风: {style_mode} | 幕数: {scenes_count} 幕)...")
-        script_data = client.generate_script(entry, style_mode=style_mode, scene_count=scenes_count)
+        print(f"🧠 [步骤 1/3] 正在调用大模型生成结构化分镜脚本 (画风: {style_mode} | 幕数: {scenes_count} 幕 | 动效: {motion_mode})...")
+        script_data = client.generate_script(
+            entry, style_mode=style_mode, scene_count=scenes_count, motion_mode=motion_mode
+        )
         script_dur = time.time() - t_script
 
         # 确保视频标题格式统一规范
@@ -127,18 +134,31 @@ def process_entry(
             kinetic_word = scene.get("kinetic_typography", {}).get("text", "")
             narration_text = scene.get("narration_segment", "")
 
-            # 2.1 生图
+            # 2.1 生图与底板准备
             print(f"   🖼️ [分镜 {idx}/{total_scenes}] 浮现字:「{kinetic_word}」 | 旁白: {narration_text[:25]}...")
-            if not os.path.exists(scene_img_path) or force:
-                t_img = time.time()
-                print(f"      🎨 正在调用 Muse-Image 绘制 1024x1792 原画...")
-                client.generate_image(prompt, scene_img_path, style_id=style_id)
-                dur_img = time.time() - t_img
-                size_kb = os.path.getsize(scene_img_path) / 1024 if os.path.exists(scene_img_path) else 0
-                print(f"      ✅ 原画绘制就绪 (耗时 {dur_img:.1f}s, 大小 {size_kb:.0f}KB) -> {scene_img_name}")
+            wb_layout_info = None
+            if is_whiteboard_scene(idx, total_scenes, motion_mode):
+                layout_eng = WhiteboardLayoutEngine()
+                layout_obj, base_canvas, strokes_list = layout_eng.generate_scene_layout(scene, scene_index=idx)
+                wb_layout_info = (layout_obj, base_canvas, strokes_list)
+                if not os.path.exists(scene_img_path) or force:
+                    base_canvas.save(scene_img_path, quality=95)
+                    size_kb = os.path.getsize(scene_img_path) / 1024 if os.path.exists(scene_img_path) else 0
+                    print(f"      ✅ 白板米白底板就绪 (大小 {size_kb:.0f}KB) -> {scene_img_name}")
+                else:
+                    print(f"      ⚡ 白板底板已存在: {scene_img_name}")
+                scene["local_image_path"] = scene_img_path
             else:
-                print(f"      ⚡ 原画素材已存在，跳过重新绘制: {scene_img_name}")
-            scene["local_image_path"] = scene_img_path
+                if not os.path.exists(scene_img_path) or force:
+                    t_img = time.time()
+                    print(f"      🎨 正在调用 Muse-Image 绘制 1024x1792 原画...")
+                    client.generate_image(prompt, scene_img_path, style_id=style_id)
+                    dur_img = time.time() - t_img
+                    size_kb = os.path.getsize(scene_img_path) / 1024 if os.path.exists(scene_img_path) else 0
+                    print(f"      ✅ 原画绘制就绪 (耗时 {dur_img:.1f}s, 大小 {size_kb:.0f}KB) -> {scene_img_name}")
+                else:
+                    print(f"      ⚡ 原画素材已存在，跳过重新绘制: {scene_img_name}")
+                scene["local_image_path"] = scene_img_path
 
             # 2.2 生成对应分镜的 TTS 语音 (zh-CN-YunzeNeural)
             voice_name = f"voice_{idx:02d}.mp3"
@@ -167,8 +187,39 @@ def process_entry(
                 scene["local_audio_path"] = None
                 scene["audio_duration_sec"] = 0.0
 
-            # 2.3 图生视频 (I2V) 混合微动驱动 (TASK-5.0 / ADR-010)
-            if is_i2v_scene(idx, total_scenes, motion_mode):
+            # 2.3 动效切片视频生成: 白板流畅书写 (TASK-5.4) vs 图生视频 I2V (TASK-5.0)
+            if is_whiteboard_scene(idx, total_scenes, motion_mode):
+                video_name = f"motion_{idx:02d}.mp4"
+                video_path = os.path.join(asset_dir, video_name)
+                if not os.path.exists(video_path) or force:
+                    t_vid = time.time()
+                    if wb_layout_info is None:
+                        layout_eng = WhiteboardLayoutEngine()
+                        _, base_canvas, strokes_list = layout_eng.generate_scene_layout(scene, scene_index=idx)
+                    else:
+                        _, base_canvas, strokes_list = wb_layout_info
+
+                    write_dur = min(max(scene_dur * 0.75, 2.5), 4.5)
+                    print(f"      ✍️ [手绘白板] 正在使用纯金属触控笔合成 1080x1920 30fps 流畅写画切片 (书写 {write_dur:.1f}s / 分镜 {scene_dur:.1f}s)...")
+                    compositor = HandCompositor()
+                    compositor.render_drawing_video(
+                        base_canvas=base_canvas,
+                        strokes=strokes_list,
+                        output_mp4_path=video_path,
+                        duration_sec=write_dur,
+                        fps=30
+                    )
+                    dur_vid = time.time() - t_vid
+                    v_size_kb = os.path.getsize(video_path) / 1024 if os.path.exists(video_path) else 0
+                    print(f"      ✅ 手绘白板流畅切片就绪 (耗时 {dur_vid:.1f}s, 大小 {v_size_kb:.0f}KB) -> {video_name}")
+                    scene["local_video_path"] = video_path
+                    scene["motion_type_mode"] = "whiteboard"
+                else:
+                    print(f"      ⚡ 手绘白板视频切片已存在: {video_name}")
+                    scene["local_video_path"] = video_path
+                    scene["motion_type_mode"] = "whiteboard"
+
+            elif is_i2v_scene(idx, total_scenes, motion_mode):
                 video_name = f"motion_{idx:02d}.mp4"
                 video_path = os.path.join(asset_dir, video_name)
                 video_prompt = scene.get("video_motion_prompt", "Camera quick punch-in zoom onto subject, organic micro motion")
@@ -303,8 +354,8 @@ def main():
         "--motion-mode",
         type=str,
         default=DEFAULT_MOTION_MODE,
-        choices=["static", "i2v-tier1", "i2v-all"],
-        help=f"I2V motion mode: 'static' (Ken Burns only), 'i2v-tier1' (Scenes 1 & 5 I2V micro-motion), 'i2v-all' (All 6 scenes I2V). Default: {DEFAULT_MOTION_MODE}"
+        choices=["static", "i2v-tier1", "i2v-all", "whiteboard"],
+        help=f"Motion mode: 'static' (Ken Burns only), 'i2v-tier1' (Scenes 1 & 5 I2V), 'i2v-all' (All 6 scenes I2V), 'whiteboard' (Smooth handdrawn whiteboard animation). Default: {DEFAULT_MOTION_MODE}"
     )
     parser.add_argument(
         "--ai-mode",
@@ -363,11 +414,13 @@ def main():
 
     print(f"🎬 场景分镜规范: [{args.scenes} 幕] (黄金叙事脉冲节奏)")
     if args.motion_mode == "static":
-        print(f"🎞️ 图生视频动效模式: [static] (纯Ken Burns镜头推拉，不调用I2V视频API，处理速度最快)")
+        print(f"🎞️ 动效模式: [static] (纯Ken Burns镜头推拉，不调用I2V视频API，处理速度最快)")
     elif args.motion_mode == "i2v-tier1":
-        print(f"🎞️ 图生视频动效模式: [i2v-tier1] (第1/5幕物理微动，平衡速度与视觉冲击力)")
+        print(f"🎞️ 动效模式: [i2v-tier1] (第1/5幕物理微动，平衡速度与视觉冲击力)")
+    elif args.motion_mode == "whiteboard":
+        print(f"✍️ 动效模式: [whiteboard] (极简手绘白板流畅全动效，纯触控笔写画，留白率>=65%)")
     else:
-        print(f"🎞️ 图生视频动效模式: [i2v-all] (全片6幕微动，调用量大耗时较长)")
+        print(f"🎞️ 动效模式: [i2v-all] (全片6幕微动，调用量大耗时较长)")
 
     if args.entry_id:
         target_entry = get_entry(conn, args.entry_id)

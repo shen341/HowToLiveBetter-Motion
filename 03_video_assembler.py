@@ -89,8 +89,11 @@ def assemble_one(
     try:
         scenes_list = storyboard.get("scenes", [])
         scene_count = len(scenes_list)
-        i2v_count = sum(1 for s in scenes_list if s.get("local_video_path") and os.path.exists(s.get("local_video_path")))
-        if i2v_count > 0:
+        wb_count = sum(1 for s in scenes_list if s.get("motion_type_mode") == "whiteboard" and s.get("local_video_path") and os.path.exists(s.get("local_video_path")))
+        i2v_count = sum(1 for s in scenes_list if s.get("motion_type_mode") == "i2v" and s.get("local_video_path") and os.path.exists(s.get("local_video_path")))
+        if wb_count > 0:
+            print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜（含 {wb_count} 幕手绘白板流畅全动效切片，执行 Freeze-and-Drift 缓动扩展与 0.5s 叠化）...")
+        elif i2v_count > 0:
             print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜（含 {i2v_count} 幕 I2V 物理微动 + {scene_count - i2v_count} 幕 Ken Burns 运镜，执行 Freeze-and-Drift 缓动扩展与 0.5s 叠化）...")
         else:
             print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜，计算 Ken Burns 运镜与 0.5s 交叉淡入淡出...")

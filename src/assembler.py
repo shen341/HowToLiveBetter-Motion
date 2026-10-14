@@ -481,8 +481,11 @@ class VideoAssembler:
         layers = [bg_clip]
 
         # 1. Kinetic typography card at Upper Golden Ratio Point (Y ~ 733px)
+        # In whiteboard mode, the canvas already features minimalist handwritten titles and icons,
+        # so we skip the floating dark badge to preserve pristine negative space.
+        is_whiteboard = (scene.get("motion_type_mode") == "whiteboard")
         kinetic_text = scene.get("kinetic_typography", {}).get("text", "")
-        if kinetic_text:
+        if kinetic_text and not is_whiteboard:
             kinetic_img = self.create_kinetic_card(kinetic_text)
             card_dur = min(duration - 0.4, 3.2)
             card_y = self.Y_UPPER_GOLDEN - 110

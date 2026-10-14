@@ -375,3 +375,95 @@ class HandCompositor:
             )
 
         return VideoClip(make_frame, duration=duration)
+
+    def plan_strokes_from_raw_points(
+        self,
+        raw_strokes: List[List[Tuple[float, float]]],
+        total_duration: float = 3.0,
+        stroke_color: Tuple[int, int, int] = (35, 35, 35),
+        stroke_width: int = 4
+    ) -> List[HandStroke]:
+        """Convert arbitrary polyline strokes into timed HandStroke segments."""
+        valid_strokes = [s for s in raw_strokes if len(s) >= 2]
+        if not valid_strokes:
+            return []
+
+        active_draw_time = total_duration * 0.75
+        stroke_lengths = []
+        for pts in valid_strokes:
+            length = sum(
+                math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])
+                for i in range(1, len(pts))
+            )
+            stroke_lengths.append(max(length, 10.0))
+
+        total_len = sum(stroke_lengths)
+        strokes: List[HandStroke] = []
+        current_t = 0.25
+        transit_gap = 0.08
+
+        for idx, pts in enumerate(valid_strokes):
+            dur = (stroke_lengths[idx] / total_len) * (active_draw_time - 0.4)
+            dur = max(0.10, dur)
+            start_t = current_t
+            end_t = start_t + dur
+            strokes.append(
+                HandStroke(
+                    points=pts,
+                    start_time=start_t,
+                    end_time=end_t,
+                    item_id=f"stroke_{idx}",
+                    stroke_color=stroke_color,
+                    stroke_width=stroke_width,
+                    is_drawing=True
+                )
+            )
+            current_t = end_t + transit_gap
+
+        return strokes
+
+    def render_drawing_video(
+        self,
+        base_canvas: Image.Image,
+        strokes: List[List[Tuple[float, float]]],
+        output_mp4_path: str,
+        duration_sec: float = 3.0,
+        fps: int = 30,
+        layout: Optional[BoardLayout] = None
+    ) -> str:
+        """Render a whiteboard drawing video clip and encode to MP4."""
+        from moviepy import VideoClip
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_mp4_path)), exist_ok=True)
+        lay = layout or BoardLayout()
+
+        # Build finalized completed board
+        static_board = base_canvas.copy()
+        draw = ImageDraw.Draw(static_board)
+        for s in strokes:
+            if len(s) >= 2:
+                draw.line(s, fill=(35, 35, 35), width=4, joint="curve")
+
+        planned_strokes = self.plan_strokes_from_raw_points(strokes, total_duration=duration_sec)
+
+        def make_frame(t):
+            return self.render_frame_at_time(
+                t=t,
+                duration=duration_sec,
+                layout=lay,
+                strokes=planned_strokes,
+                base_canvas=base_canvas,
+                static_completed_board=static_board,
+            )
+
+        clip = VideoClip(make_frame, duration=duration_sec)
+        clip.write_videofile(
+            output_mp4_path,
+            fps=fps,
+            codec="libx264",
+            preset="ultrafast",
+            pixel_format="yuv420p",
+            logger=None
+        )
+        clip.close()
+        return output_mp4_path
