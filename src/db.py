@@ -249,13 +249,13 @@ def get_statistics(conn: sqlite3.Connection) -> Dict[str, Any]:
         status_counts[row[0]] = row[1]
 
     # Ensure all standard statuses exist in dictionary
-    for s in ["Pending", "Script_Generated", "Media_Generated", "Video_Assembled", "Completed", "Failed"]:
+    for s in ["Pending", "Script_Generated", "Media_Generated", "Video_Assembled", "Completed", "Approved", "Needs_Revision", "Failed"]:
         status_counts.setdefault(s, 0)
 
     chapter_counts = []
     ch_rows = conn.execute("""
         SELECT chapter_index, chapter_title, COUNT(*) as cnt,
-               SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_cnt
+               SUM(CASE WHEN status IN ('Completed', 'Approved') THEN 1 ELSE 0 END) as completed_cnt
         FROM entries
         GROUP BY chapter_index, chapter_title
         ORDER BY chapter_index ASC
@@ -274,6 +274,54 @@ def get_statistics(conn: sqlite3.Connection) -> Dict[str, Any]:
         "status_summary": status_counts,
         "chapters": chapter_counts
     }
+
+
+def mark_approved(conn: sqlite3.Connection, entry_id: str, reviewer_notes: Optional[str] = None) -> bool:
+    """Mark an entry as Approved by creator/reviewer."""
+    now = datetime.now().isoformat()
+    with conn:
+        if reviewer_notes:
+            conn.execute(
+                "UPDATE entries SET status = 'Approved', notes = ?, updated_at = ? WHERE id = ?",
+                (reviewer_notes, now, entry_id)
+            )
+        else:
+            conn.execute(
+                "UPDATE entries SET status = 'Approved', updated_at = ? WHERE id = ?",
+                (now, entry_id)
+            )
+    return True
+
+
+def reset_entry(
+    conn: sqlite3.Connection,
+    entry_id: str,
+    target_status: str = "Pending",
+    clear_assets: bool = False
+) -> bool:
+    """Reset an entry back to an earlier status (e.g. for re-generation or re-assembly)."""
+    now = datetime.now().isoformat()
+    with conn:
+        if clear_assets:
+            conn.execute("""
+                UPDATE entries SET
+                    status = ?,
+                    script_json = NULL,
+                    raw_assets_dir = NULL,
+                    final_video_path = NULL,
+                    error_message = NULL,
+                    updated_at = ?
+                WHERE id = ?
+            """, (target_status, now, entry_id))
+        else:
+            conn.execute("""
+                UPDATE entries SET
+                    status = ?,
+                    error_message = NULL,
+                    updated_at = ?
+                WHERE id = ?
+            """, (target_status, now, entry_id))
+    return True
 
 
 def export_progress_json(conn: sqlite3.Connection, json_path: str = DEFAULT_PROGRESS_PATH) -> Dict[str, Any]:

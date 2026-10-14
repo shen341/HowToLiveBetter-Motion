@@ -92,6 +92,11 @@ def build_system_prompt(scene_count: int = 6) -> str:
     return f"""你是一位顶级短视频总导演兼视觉分镜大师，精通开源动画项目 `huashu-art-motion` 的美学和解说语法。
 你的任务是将提供的高性价比人生指南条目，转化为一份极具观赏性、节奏紧凑、绝无低质 AI 感的 28~32 秒大众科普短视频分镜脚本。
 
+【绝对禁令与防 Agent 跑偏原则（最高优先级）】
+1. **纯文本直接输出**：必须在当前会话中直接以纯文本 JSON 格式返回最终的分镜脚本结果，严禁输出任何思考过程、自我总结或无关前缀。
+2. **严禁调用系统工具**：严禁调用任何后台系统工具、文件修改命令（edit file）、终端命令或沙盒脚本。
+3. **严禁写入或更新记忆文件**：严禁创建、读取、编辑或追加任何 MEMORY.md、SOUL.md、USER.md 等文件；严禁更新规则库（包括 Chinese brief fidelity rule 等），严禁记录任何历史任务日志或规则演进记录。
+
 【核心设计铁律】
 1. **时长控制**：全片时长严格控制在 28 ~ 32 秒以内，非常适合抖音、小红书和视频号短视频。
 2. **视频标题**：必须遵循格式 `"[章节名]之[小条目标题]"`。
@@ -113,6 +118,11 @@ def build_system_prompt(scene_count: int = 6) -> str:
 7. **多模态视觉 Prompts 规范**：
    - `image_prompt`: 英文，面向生图模型。必须包含具体的物理实体、动作、构图（9:16 vertical ratio）、景别、光影质感，以及所选艺术画风的基石关键词！
    - `video_motion_prompt`: 英文，面向视频运镜控制。写明镜头运动（如 `Camera quick punch-in zoom`, `Smooth lateral tracking pan`, `Static grounded hold`）与微动细节。
+8. **AI 生图内容安全与隐喻转换规范 (Safety Guardrails & Metaphorical Design)**：
+   - 严禁在 `image_prompt` 中直接包含任何可能触发主流生图模型（Meta/Midjourney/SD）内容安全审查（Content Policy Violation）的敏感违规词：
+     * **严禁烟草/吸烟物象**：严禁出现 `cigarette`, `smoking`, `tobacco`, `ashtray filled with ashes`, `stubbing out a cigarette` 等字眼。涉及戒烟、肺癌或健康防护时，必须转换为安全积极的隐喻意象（如：`an inverted empty clean ceramic ashtray on a rustic desk`, `clean smoke-free wooden table`, `fresh houseplant beside a glass of clear water`, `a medical lung health booklet with morning daylight`）。
+     * **严禁创伤/血液/注射**：严禁出现具象血迹（`blood`）、开放性创口（`wound`）或针头穿刺人体皮肤（`needle piercing skin`）。必须转换为“温和医生健康问诊（warm doctor consultation）”、“医学显微细胞科普示意图（microscopic cellular diagram）”或“常规纸质体检报告单（health checkup report paper sheet）”。
+     * **严禁危险管制物**：严禁枪械、管制刀具与非法违禁物，统一使用日常安全防护用具或生活实物作为具象载体。
 
 【输出格式】
 你必须直接输出严格的 JSON 对象（不要包裹 Markdown 代码块外的废话），其结构如下：
@@ -210,6 +220,8 @@ def build_user_prompt(entry: Dict[str, Any], style_mode: str = "auto", scene_cou
 【分镜幕数要求】:
 必须严格规划 **{scene_count} 幕分镜**（黄金六幕叙事曲线：痛点钩子 -> 认知颠覆 -> 机理危害 -> 权威证据 -> 极低成本 -> 行动金句），每镜口播控制在 15~20 字以内短句，节奏紧凑连续流动，拒绝长镜头静止！
 
-请严格输出指定 JSON 格式，标题统一命名为："{chapter_title}之{item_title}"。"""
+【强制输出与抑制工具约束】:
+请直接以纯文本 JSON 格式输出短视频分镜脚本，禁止调用任何系统工具、不要更新规则记忆文件（严禁编辑任何 MEMORY.md），直接回复最终内容。
+标题统一命名为："{chapter_title}之{item_title}"。"""
 
 

@@ -26,6 +26,8 @@ print = functools.partial(print, flush=True)
 
 from src.config import (
     API_MAX_RETRIES,
+    API_TIMEOUT_SECONDS,
+    DEFAULT_MOTION_MODE,
     OUTPUT_RAW_ASSETS_DIR,
     RATE_LIMIT_MUSE_RPM,
     RATE_LIMIT_TTS_RPM,
@@ -40,7 +42,7 @@ from src.db import (
     update_status,
 )
 from src.cover_generator import CoverGenerator
-from src.muse_client import MuseClient
+from src.muse_client import MuseClient, is_i2v_scene
 from src.srt_generator import SRTGenerator
 from src.tts_client import TTSClient
 
@@ -54,6 +56,7 @@ def process_entry(
     force: bool = False,
     style_mode: str = "auto",
     scenes_count: int = 6,
+    motion_mode: str = "static",
     current_index: int = 1,
     total_count: int = 1
 ) -> bool:
@@ -163,6 +166,38 @@ def process_entry(
                 scene["local_audio_path"] = None
                 scene["audio_duration_sec"] = 0.0
 
+            # 2.3 图生视频 (I2V) 混合微动驱动 (TASK-5.0 / ADR-010)
+            if is_i2v_scene(idx, total_scenes, motion_mode):
+                video_name = f"motion_{idx:02d}.mp4"
+                video_path = os.path.join(asset_dir, video_name)
+                video_prompt = scene.get("video_motion_prompt", "Camera quick punch-in zoom onto subject, organic micro motion")
+                if not os.path.exists(video_path) or force:
+                    t_vid = time.time()
+                    print(f"      🎬 [I2V 微动] 正在以首帧原画调用 Muse-Video 驱动 3.0s 物理微动作...")
+                    try:
+                        client.generate_video(
+                            prompt=video_prompt,
+                            output_path=video_path,
+                            image_path=scene_img_path,
+                            duration_sec=3.0
+                        )
+                        dur_vid = time.time() - t_vid
+                        v_size_kb = os.path.getsize(video_path) / 1024 if os.path.exists(video_path) else 0
+                        print(f"      ✅ I2V 微动切片就绪 (耗时 {dur_vid:.1f}s, 大小 {v_size_kb:.0f}KB) -> {video_name}")
+                        scene["local_video_path"] = video_path
+                        scene["motion_type_mode"] = "i2v"
+                    except Exception as ve:
+                        print(f"      ⚠️ I2V 视频生成异常 ({ve})，自动降级为静态原画 + Ken Burns 模式")
+                        scene["local_video_path"] = None
+                        scene["motion_type_mode"] = "ken_burns"
+                else:
+                    print(f"      ⚡ I2V 视频切片已存在: {video_name}")
+                    scene["local_video_path"] = video_path
+                    scene["motion_type_mode"] = "i2v"
+            else:
+                scene["local_video_path"] = None
+                scene["motion_type_mode"] = "ken_burns"
+
         # 更新全局目标时长
         script_data["target_duration_sec"] = round(sum(s.get("duration_sec", 6.0) for s in scenes) - (len(scenes) - 1) * 0.5, 2)
         print(f"   📊 全片总净时长 (含转场叠加): {script_data['target_duration_sec']} 秒")
@@ -257,6 +292,19 @@ def main():
         default=API_MAX_RETRIES,
         help=f"Max retries for transient API errors with backoff (default: {API_MAX_RETRIES})"
     )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=API_TIMEOUT_SECONDS,
+        help=f"Per-request timeout in seconds to prevent blocking indefinitely (default: {API_TIMEOUT_SECONDS}s)"
+    )
+    parser.add_argument(
+        "--motion-mode",
+        type=str,
+        default=DEFAULT_MOTION_MODE,
+        choices=["static", "i2v-tier1", "i2v-all"],
+        help=f"I2V motion mode: 'static' (Ken Burns only), 'i2v-tier1' (Scenes 1 & 5 I2V micro-motion), 'i2v-all' (All 6 scenes I2V). Default: {DEFAULT_MOTION_MODE}"
+    )
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
@@ -268,6 +316,7 @@ def main():
         mock=args.mock,
         rate_limit_rpm=args.rpm_muse,
         max_retries=args.max_retries,
+        timeout=args.timeout,
     )
     tts_client = TTSClient(
         rate_limit_rpm=args.rpm_tts,
@@ -277,11 +326,21 @@ def main():
     if client.mock:
         print("💡 当前运行环境为 [离线/模拟测试模式] (未检测到有效 MUSE_API_KEY 或开启了 --mock 参数)")
     else:
-        print(f"🔌 当前已连接 Muse AI API: {client.base_url} [速率限额: {args.rpm_muse} RPM]")
+        print(f"🔌 当前已连接 Muse AI API: {client.base_url} [速率限额: {args.rpm_muse} RPM | 单次超时: {args.timeout:.0f}s]")
+    if client.fallback_client:
+        print(f"🛡️ 备选容灾路线已就绪: {client.fallback_base_url} [生图: {client.fallback_image_model} | 文本: {client.fallback_text_model}]")
+    else:
+        print("ℹ️ 备选生图路线未启用 (如需开启请在 .env 中设置 YOURSELFAI_API_KEY)")
     print(f"🎙️ 当前已就绪 TTS 语音服务: {tts_client.api_url} [音色: {tts_client.voice} | 限额: {args.rpm_tts} RPM]")
     print(f"🔄 瞬时异常容灾机制: 开启指数退避重试 (最大 {args.max_retries} 次重试, 2s -> 4s -> 8s)")
     print(f"🎨 画风配置策略: [{args.style}] ('auto' 为 AI 自主语义决策)")
     print(f"🎬 场景分镜规范: [{args.scenes} 幕] (黄金叙事脉冲节奏)")
+    if args.motion_mode == "static":
+        print(f"🎞️ 图生视频动效模式: [static] (纯Ken Burns镜头推拉，不调用I2V视频API，处理速度最快)")
+    elif args.motion_mode == "i2v-tier1":
+        print(f"🎞️ 图生视频动效模式: [i2v-tier1] (第1/5幕物理微动，平衡速度与视觉冲击力)")
+    else:
+        print(f"🎞️ 图生视频动效模式: [i2v-all] (全片6幕微动，调用量大耗时较长)")
 
     if args.entry_id:
         target_entry = get_entry(conn, args.entry_id)
@@ -312,6 +371,7 @@ def main():
             force=args.force,
             style_mode=args.style,
             scenes_count=args.scenes,
+            motion_mode=args.motion_mode,
             current_index=idx,
             total_count=total_count
         )

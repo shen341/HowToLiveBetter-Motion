@@ -1,12 +1,14 @@
 {
-  "export_time": "2026-10-12T21:12:20.611167",
+  "export_time": "2026-10-14T08:50:55.651691",
   "total_entries": 677,
   "status_summary": {
-    "Completed": 8,
-    "Pending": 669,
+    "Approved": 24,
+    "Completed": 4,
+    "Pending": 649,
     "Script_Generated": 0,
     "Media_Generated": 0,
     "Video_Assembled": 0,
+    "Needs_Revision": 0,
     "Failed": 0
   },
   "chapters": [
@@ -14,7 +16,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 7
+      "completed_items": 27
     },
     {
       "chapter_index": 2,
@@ -223,9 +225,9 @@
       "item_index": 1,
       "title": "系安全带，前排后排都系",
       "evidence_grade": "A",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_001_不要早死之系安全带，前排后排都系.mp4",
-      "updated_at": "2026-10-12T21:12:20.591662"
+      "updated_at": "2026-10-12T23:15:34.823316"
     },
     {
       "id": "01_002",
@@ -234,9 +236,9 @@
       "item_index": 2,
       "title": "骑摩托车、电动自行车戴头盔并扣好",
       "evidence_grade": "A",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_002_不要早死之骑摩托车、电动自行车戴头盔并扣好.mp4",
-      "updated_at": "2026-10-11T20:49:07.358713"
+      "updated_at": "2026-10-12T22:05:23.345490"
     },
     {
       "id": "01_003",
@@ -245,9 +247,9 @@
       "item_index": 3,
       "title": "装烟雾报警器；冬天在室内烧煤、用燃气取暖的再装一氧化碳报警器",
       "evidence_grade": "B",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_003_不要早死之装烟雾报警器；冬天在室内烧煤、用燃气取暖的再装一氧化碳报警器.mp4",
-      "updated_at": "2026-10-11T22:01:49.552834"
+      "updated_at": "2026-10-12T22:58:56.618777"
     },
     {
       "id": "01_004",
@@ -256,9 +258,9 @@
       "item_index": 4,
       "title": "燃气软管和灶具到期就换，不自己改管道，燃气公司上门推销可以直接拒绝",
       "evidence_grade": "C",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_004_不要早死之燃气软管和灶具到期就换，不自己改管道，燃气公司上门推销可以直接拒绝.mp4",
-      "updated_at": "2026-10-11T22:18:13.597361"
+      "updated_at": "2026-10-12T22:59:01.193705"
     },
     {
       "id": "01_005",
@@ -267,9 +269,9 @@
       "item_index": 5,
       "title": "不采、不买、不吃野生蘑菇，任何「土办法鉴别」都不成立",
       "evidence_grade": "A",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_005_不要早死之不采、不买、不吃野生蘑菇，任何「土办法鉴别」都不成立.mp4",
-      "updated_at": "2026-10-12T20:07:08.444060"
+      "updated_at": "2026-10-12T23:05:45.558259"
     },
     {
       "id": "01_006",
@@ -278,9 +280,9 @@
       "item_index": 6,
       "title": "电动自行车不推进楼道、不进电梯、不在家里充电",
       "evidence_grade": "A",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_006_不要早死之电动自行车不推进楼道、不进电梯、不在家里充电.mp4",
-      "updated_at": "2026-10-12T20:13:53.673364"
+      "updated_at": "2026-10-12T23:05:49.636942"
     },
     {
       "id": "01_007",
@@ -289,9 +291,9 @@
       "item_index": 7,
       "title": "量血压，高了就吃药降到达标",
       "evidence_grade": "A",
-      "status": "Completed",
+      "status": "Approved",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_007_不要早死之量血压，高了就吃药降到达标.mp4",
-      "updated_at": "2026-10-12T20:20:40.971342"
+      "updated_at": "2026-10-12T23:05:57.686075"
     },
     {
       "id": "01_008",
@@ -300,9 +302,9 @@
       "item_index": 8,
       "title": "35 岁以后只要超重，就去查一次空腹血糖，正常也每三年再查",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731283"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_008_不要早死之35_岁以后只要超重，就去查一次空腹血糖，正常也每三年再查.mp4",
+      "updated_at": "2026-10-12T23:15:46.758248"
     },
     {
       "id": "01_009",
@@ -311,9 +313,9 @@
       "item_index": 9,
       "title": "开车不超速、不酒驾",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731324"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_009_不要早死之开车不超速、不酒驾.mp4",
+      "updated_at": "2026-10-12T23:20:31.696988"
     },
     {
       "id": "01_010",
@@ -322,9 +324,9 @@
       "item_index": 10,
       "title": "坐车时给 4 岁以下儿童用安全座椅，不要抱在怀里",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731355"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_010_不要早死之坐车时给_4_岁以下儿童用安全座椅，不要抱在怀里.mp4",
+      "updated_at": "2026-10-13T08:05:41.686233"
     },
     {
       "id": "01_011",
@@ -333,9 +335,9 @@
       "item_index": 11,
       "title": "家里有小孩就给窗户和阳台装限位器，纱窗不算防护",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731387"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_011_不要早死之家里有小孩就给窗户和阳台装限位器，纱窗不算防护.mp4",
+      "updated_at": "2026-10-13T16:46:22.534746"
     },
     {
       "id": "01_012",
@@ -344,9 +346,9 @@
       "item_index": 12,
       "title": "儿童近水不离视线，划船、野泳穿救生衣",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731432"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_012_不要早死之儿童近水不离视线，划船、野泳穿救生衣.mp4",
+      "updated_at": "2026-10-13T21:35:56.371350"
     },
     {
       "id": "01_013",
@@ -355,9 +357,9 @@
       "item_index": 13,
       "title": "60 岁以上练平衡和腿部力量，改造家里的浴室和楼梯",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731486"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_013_不要早死之60_岁以上练平衡和腿部力量，改造家里的浴室和楼梯.mp4",
+      "updated_at": "2026-10-13T21:43:48.854875"
     },
     {
       "id": "01_014",
@@ -366,9 +368,9 @@
       "item_index": 14,
       "title": "查乙肝两对半，没有抗体就打疫苗",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731522"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_014_不要早死之查乙肝两对半，没有抗体就打疫苗.mp4",
+      "updated_at": "2026-10-13T21:44:00.711241"
     },
     {
       "id": "01_015",
@@ -377,9 +379,9 @@
       "item_index": 15,
       "title": "被铁钉、木刺扎到或者伤口沾了泥土，当天去处理，顺便问破伤风要不要打",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731556"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_015_不要早死之被铁钉、木刺扎到或者伤口沾了泥土，当天去处理，顺便问破伤风要不要打.mp4",
+      "updated_at": "2026-10-13T21:50:29.892914"
     },
     {
       "id": "01_016",
@@ -388,9 +390,9 @@
       "item_index": 16,
       "title": "女性接种 HPV 疫苗，越早越好",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731593"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_016_不要早死之女性接种_HPV_疫苗，越早越好.mp4",
+      "updated_at": "2026-10-13T21:54:34.935180"
     },
     {
       "id": "01_017",
@@ -399,9 +401,9 @@
       "item_index": 17,
       "title": "女性 40 岁起做乳腺癌筛查，每两年一次钼靶",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731623"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_017_不要早死之女性_40_岁起做乳腺癌筛查，每两年一次钼靶.mp4",
+      "updated_at": "2026-10-13T21:58:23.969681"
     },
     {
       "id": "01_018",
@@ -410,9 +412,9 @@
       "item_index": 18,
       "title": "30 岁以上女性做宫颈癌筛查，优先 HPV 检测",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731653"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_018_不要早死之30_岁以上女性做宫颈癌筛查，优先_HPV_检测.mp4",
+      "updated_at": "2026-10-13T22:03:01.563206"
     },
     {
       "id": "01_019",
@@ -421,9 +423,9 @@
       "item_index": 19,
       "title": "45 到 50 岁起做结直肠癌筛查，做查大便隐血的粪便免疫化学检测或者肠镜",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731685"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_019_不要早死之45_到_50_岁起做结直肠癌筛查，做查大便隐血的粪便免疫化学检测或者肠镜.mp4",
+      "updated_at": "2026-10-13T22:07:02.367011"
     },
     {
       "id": "01_020",
@@ -432,9 +434,9 @@
       "item_index": 20,
       "title": "有心血管病的人和老年人每年打流感疫苗",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731721"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_020_不要早死之有心血管病的人和老年人每年打流感疫苗.mp4",
+      "updated_at": "2026-10-13T22:09:33.930592"
     },
     {
       "id": "01_021",
@@ -443,9 +445,9 @@
       "item_index": 21,
       "title": "50 岁以后打带状疱疹疫苗",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731761"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_021_不要早死之50_岁以后打带状疱疹疫苗.mp4",
+      "updated_at": "2026-10-13T22:12:53.151322"
     },
     {
       "id": "01_022",
@@ -454,9 +456,9 @@
       "item_index": 22,
       "title": "65 岁以上打肺炎球菌疫苗",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731794"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_022_不要早死之65_岁以上打肺炎球菌疫苗.mp4",
+      "updated_at": "2026-10-13T22:16:53.290906"
     },
     {
       "id": "01_023",
@@ -465,9 +467,9 @@
       "item_index": 23,
       "title": "查幽门螺杆菌，阳性就根除",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731857"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_023_不要早死之查幽门螺杆菌，阳性就根除.mp4",
+      "updated_at": "2026-10-13T22:22:59.702562"
     },
     {
       "id": "01_024",
@@ -476,9 +478,9 @@
       "item_index": 24,
       "title": "重度吸烟者每年做一次低剂量胸部 CT",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731888"
+      "status": "Approved",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_024_不要早死之重度吸烟者每年做一次低剂量胸部_CT.mp4",
+      "updated_at": "2026-10-13T22:27:22.127563"
     },
     {
       "id": "01_025",
@@ -487,9 +489,9 @@
       "item_index": 25,
       "title": "抑郁或有自杀念头时打 12356，家里不囤安眠药和农药",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731919"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_025_不要早死之抑郁或有自杀念头时打_12356，家里不囤安眠药和农药.mp4",
+      "updated_at": "2026-10-14T08:39:16.285327"
     },
     {
       "id": "01_026",
@@ -498,9 +500,9 @@
       "item_index": 26,
       "title": "备齐灭火器、灭火毯、逃生呼吸面罩和急救包，每年检查一次",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731951"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_026_不要早死之备齐灭火器、灭火毯、逃生呼吸面罩和急救包，每年检查一次.mp4",
+      "updated_at": "2026-10-14T08:43:53.776227"
     },
     {
       "id": "01_027",
@@ -509,9 +511,9 @@
       "item_index": 27,
       "title": "尿里出现肉眼看得见的血，哪怕不疼、哪怕第二天就干净了，也要去查一次",
       "evidence_grade": "B",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.731994"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_027_不要早死之尿里出现肉眼看得见的血，哪怕不疼、哪怕第二天就干净了，也要去查一次.mp4",
+      "updated_at": "2026-10-14T08:50:55.618678"
     },
     {
       "id": "01_028",

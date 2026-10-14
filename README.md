@@ -30,15 +30,27 @@
 7. **独立外挂 SRT 字幕导出引擎 (SRT Generator)**：
    - 实现 `src/srt_generator.py`，精确镜像转场叠化时间轴，输出标准 UTF-8 毫秒级 `.srt` 字幕。
    - 支持分镜级 1:1 精确对齐与断句级自适应比例切分，成片同名自动外挂，剪映一键导入二次精修。
+8. **社交平台码率自适应压缩与流式秒开预设 (Platform Bitrate Presets)**：
+   - 内置主流自媒体平台（小红书 `xhs` 抗二压、抖音 `douyin` 高清、微信 `wechat` 秒开、`bilibili`、`default`）编码矩阵。
+   - 采用 CRF (19~22) + VBV 峰值限速双控，将 30s 成片严格锁死在 **10~20MB** 最优传输区间，注入 `-movflags +faststart` 保证移动端即点即播。
+9. **多平台爆款营销文案与高权重标签生成器 (Social Copywriting & Hashtags)**：
+   - 实现 `src/copywriter.py`，针对小红书（爆款候选标题、痛点导语、📌 Emoji 分点、利他 CTA、高权重标签）、抖音短视频（18字短标题、黄金3秒完播 Hook）、微信视频号（公信力标题、朋友圈转发推荐语）量身定制提示词与清洗体系。
+   - 机器可读 `copywriting.json` 与运营发布四件套同名 `{clean_name}_copywriting.txt` 双轨落盘。
+10. **图生视频 (I2V) 混合动态微动演进与自适应尾帧定格 (Hybrid Motion & Freeze-and-Drift)**：
+   - 突破二维仿射运镜限制，以原画为首帧调用 `muse-video` 赋予关键分镜真实物理微动。
+   - 独创自适应尾帧缓动定格算法（Freeze-and-Drift），在 $T_{video} < T_{scene}$ 时自适应延展缓动推拉，兼顾高保真音画同步与成本控制（节约 70% 预算）。
+11. **本地响应式 Web 审核看板与人机协作质检 (Web Review Dashboard)**：
+   - 基于 Streamlit 构建极简本地看板（`04_review_dashboard.py` / `dashboard.py`），全览 677 篇短视频生命周期。
+   - 集中核验 1080×1920 竖屏成片、专属封面、SRT 软字幕、分镜微动矩阵与三平台营销文案一键复制，支持一键工单流转。
 
 ---
 
 ## 📚 核心文档导航 (Documentation Hub)
 
 - 📖 **[运用手册与运维指南 (Operations Manual)](file:///c:/develop/HowToLiveBetter-Motion/docs/OPERATIONS_MANUAL.md)**：包含前置环境安装、SOP 操作命令、画风调度、BGM 定制、SQLite 运维、剪映二次微调及发布前质检清单。
-- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 11 项关键 ADR（ADR-001 ~ ADR-011），详细阐述双轨状态、画风理念、Pillow 渲染、以声定景、弱音混音、AI 语义自主选风、专属封面生成、黄金 6 幕升级、独立 SRT 字幕架构、I2V 混合微动演进路线及令牌桶速率控制与指数退避重试容灾架构。
+- 🏛️ **[架构决策记录 (ADR 索引)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)**：包含 14 项关键 ADR（[ADR-001 ~ ADR-014](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/README.md)），系统性沉淀状态持久化、美学理念、Pillow 渲染、以声定景、弱音混音、自主选风、专属封面、黄金 6 幕、独立 SRT、I2V 混合微动、令牌桶限流、社交平台码率预设、Web 审核看板及多平台营销文案架构。
 - 📋 **[项目路线图与待办任务 (TODO & Roadmap)](file:///c:/develop/HowToLiveBetter-Motion/docs/TODO.md)**：记录已完成里程碑、近期高优先任务及远期规划。
-- 📐 **[系统架构设计与技术选型 (System Design)](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md)**：包含数据 Schema、MoviePy 架构、提示词编译工程与交付三件套标准。
+- 📐 **[系统架构设计与技术选型 (System Design)](file:///c:/develop/HowToLiveBetter-Motion/docs/system_design.md)**：包含数据 Schema、MoviePy 架构、提示词编译工程与交付四件套标准。
 
 ---
 
@@ -49,7 +61,7 @@ HowToLiveBetter-Motion/
 ├── .env.example               # 环境变量配置模板 (Muse API & TTS 配置)
 ├── .gitignore                 # Git 忽略配置
 ├── README.md                  # 项目总览说明
-├── requirements.txt           # Python 依赖清单
+├── requirements.txt           # Python 依赖清单 (含 Streamlit)
 ├── pipeline.db                # SQLite 状态数据库 (本地自动生成)
 ├── progress.json              # 全局进度追踪快照 (677 条完整状态)
 │
@@ -58,11 +70,8 @@ HowToLiveBetter-Motion/
 │   ├── TODO.md                # [任务清单] 路线图与待办 Backlog
 │   ├── system_design.md       # 系统架构设计、Schema 与技术选型文档
 │   └── decisions/             # [ADR 架构决策记录]
-│       ├── README.md          # ADR 索引与状态表
-│       ├── ADR-001 ~ ADR-006  # 早期基础架构与自主选风决策
-│       ├── ADR-007-Cover-Card-Generation-Architecture.md
-│       ├── ADR-008-Golden-6-Scenes-Narrative-Pulse-Rhythm.md
-│       └── ADR-009-Standalone-SRT-Subtitle-Architecture.md
+│       ├── README.md          # ADR 索引与状态表 (ADR-001 ~ ADR-014)
+│       └── ADR-001 ~ ADR-014  # 架构决策记录全文
 │
 ├── backgroup_music/           # 自定义背景音乐库 (放入任意 .mp3 音乐)
 │   ├── 01_country_music.mp3
@@ -79,22 +88,32 @@ HowToLiveBetter-Motion/
 │   ├── db.py                  # 数据库初始化、状态流转与导出
 │   ├── extractor.py           # Markdown 正则与 AST 解析器
 │   ├── prompt_builder.py      # huashu 风格美学与 Prompt 编译器
-│   ├── muse_client.py         # Muse AI API 客户端与离线模拟器
+│   ├── muse_client.py         # Muse AI API 客户端与离线模拟器 (I2V 支持)
+│   ├── rate_limiter.py        # 令牌桶并发限流与指数退避重试执行器
 │   ├── tts_client.py          # Cloudflare Edge-TTS 语音生成与时长测量
 │   ├── cover_generator.py     # 1080x1920 竖屏专属封面卡片生成器
 │   ├── srt_generator.py       # 独立外挂 SRT 字幕生成与时间轴对齐引擎
+│   ├── copywriter.py          # 多平台营销文案与高权重标签生成引擎
 │   └── assembler.py           # MoviePy 运镜、转场、黄金分割字幕与混音引擎
+│
+├── tests/                     # 自动化单元测试套件
+│   ├── test_copywriter.py     # 营销文案与双轨产物测试
+│   ├── test_i2v_motion.py     # I2V 混合微动与尾帧缓动测试
+│   ├── test_rate_limiter.py   # 限流与退避重试测试
+│   └── test_review_dashboard.py # 看板与业务流转测试
 │
 ├── 01_data_extractor.py       # 步骤 1: 数据拉取、结构化抽取与状态入库
 ├── 02_ai_generator.py         # 步骤 2: 大模型分镜规划、素材生成、TTS语音、封面与字幕
-├── 03_video_assembler.py      # 步骤 3: 运镜转场与双轨混音全自动合成输出与交付三件套
+├── 03_video_assembler.py      # 步骤 3: 运镜转场与双轨混音全自动合成输出 (平台预设+I2V)
+├── 04_review_dashboard.py     # 步骤 4: Streamlit 本地可视化质检看板与工单流转
+├── dashboard.py               # 看板极简快捷启动脚本
 │
 ├── data/                      # 原始数据源
 │   └── HowToLiveBetter/       # 克隆的知识库仓库 (book/*.md)
 │
 └── output/                    # 产物输出目录
-    ├── raw_assets/            # 各条目素材包 (storyboard.json, cover.png, subtitles.srt, scene_01~06, voice_01~06)
-    └── final_videos/          # 最终交付三件套 ({id}.mp4 成片, {id}.srt 独立字幕, {id}_cover.png 发布首图)
+    ├── raw_assets/            # 各条目素材包 (storyboard.json, cover.png, subtitles.srt, copywriting.json, scene_01~06, motion_01~06, voice_01~06)
+    └── final_videos/          # 最终交付四件套 ({id}.mp4 成片, {id}.srt 独立字幕, {id}_cover.png 发布首图, {id}_copywriting.txt 营销文案)
 ```
 
 ---
@@ -132,6 +151,16 @@ MUSE_BASE_URL=https://yourselfai.org/muse/v1
 MODEL_TEXT=muse-spark
 MODEL_IMAGE=muse-image
 MODEL_VIDEO=muse-video
+
+# 图片与模型备选路线配置 (OpenAI 兼容协议)
+# 当 muse-image 遇到限速 (429) 或服务端拥堵 (502/超时) 时自动无缝切换备用路线
+YOURSELFAI_API_KEY=your_yourselfai_api_key_here
+YOURSELFAI_BASE_URL=https://yourselfai.org/v1
+YOURSELFAI_MODEL=gemini-3.8-flash-high
+YOURSELFAI_IMAGE_MODEL=gemini-3.1-flash-image
+
+# 接口单次请求超时时长 (秒, 避免服务端拥堵时无限挂起, 默认: 45.0)
+API_TIMEOUT_SECONDS=45.0
 
 # TTS 语音生成配置 (Cloudflare Worker Edge-TTS)
 TTS_API_URL=https://tts-voice-magic.shimizuhiro874-28e.workers.dev/v1/audio/speech
@@ -197,30 +226,79 @@ python 02_ai_generator.py --limit 5
 
 ---
 
-### 步骤 3：音视频全自动合成、运镜转场与交付三件套 (`03_video_assembler.py`)
+### 步骤 3：音视频全自动合成、平台码率压缩与交付四件套 (`03_video_assembler.py`)
 
-使用 `moviepy` 动态加载 6 幕分镜与语音轨，添加 Ken Burns 运镜、0.5s 叠化转场、上下黄金分割点文字卡片，混入 `backgroup_music/` 背景音乐，并自动同步交付三件套：
+使用 `moviepy` 动态加载 6 幕分镜与语音轨，支持纯原画运镜或 I2V 真实物理微动切片（配合尾帧缓动定格 Freeze-and-Drift）、0.5s 叠化转场、上下黄金分割点文字卡片，混入 `backgroup_music/` 背景音乐，并自动将成片、封面、字幕与营销文案组装输出至交付目录：
 
 ```bash
-# 合成指定条目的短视频 (例如 01_003)
+# 1. 合成指定条目的短视频 (默认 default 通用码率)
 python 03_video_assembler.py --entry-id 01_003
 
-# 批量合成所有已就绪的条目
+# 2. 针对目标平台指定码率预设与流式秒开 (xhs/douyin/wechat/bilibili)
+python 03_video_assembler.py --entry-id 01_001 --preset xhs
+
+# 3. 启用 I2V 混合微动合成
+python 03_video_assembler.py --entry-id 01_001 --motion-mode i2v-tier1
+
+# 4. 批量合成所有已就绪的条目
 python 03_video_assembler.py --limit 5
 
-# 指定自定义 BGM
+# 5. 指定自定义 BGM
 python 03_video_assembler.py --entry-id 01_001 --bgm backgroup_music/01_country_music.mp3
 
-# 导出断句级细分 SRT 字幕（自适应标点符号比例切分，适合剪映逐句跳字）
+# 6. 导出断句级细分 SRT 字幕（自适应标点符号比例切分，适合剪映逐句跳字）
 python 03_video_assembler.py --entry-id 01_001 --force --split-srt
 ```
 
-产物保存在：`output/final_videos/` 交付三件套：
-- `{clean_name}.mp4`：1080×1920 竖屏成片（约 28~32 秒，8~15MB）
+产物保存在：`output/final_videos/` 标准化交付四件套：
+- `{clean_name}.mp4`：1080×1920 竖屏成片（约 28~32 秒，10~20MB，`-movflags +faststart` 保证流式秒开）
 - `{clean_name}.srt`：同名独立外挂字幕（播放器与剪映自动关联）
 - `{clean_name}_cover.png`：配套发布首图封面卡片
+- `{clean_name}_copywriting.txt`：配套多平台发布营销文案
 
-合成完成后，条目状态自动流转为 `Completed`。
+---
+
+### 步骤 4：多平台营销文案与高权重标签生成 (`src/copywriter.py`)
+
+为解决短视频分发至小红书、抖音、微信视频号时的文案编写痛点，调用大模型或离线模版自动提炼爆款标题、完播钩子、Emoji 分点正文与垂直话题标签：
+
+```bash
+# 1. 单条生成 (调用 muse-spark 大模型)
+python -m src.copywriter --entry-id 01_001
+
+# 2. 离线快速生成 (使用内置高拟真模版，无需消耗 Token)
+python -m src.copywriter --entry-id 01_001 --mock
+
+# 3. 批量为所有已有产物的条目生成营销文案
+python -m src.copywriter --all --mock
+```
+
+产物保存在：
+- 机器可读：`output/raw_assets/{entry_id}/copywriting.json`
+- 运营可复制：`output/final_videos/{clean_name}_copywriting.txt`
+
+---
+
+### 步骤 5：创作者可视化 Web 审核看板 (`04_review_dashboard.py` / `dashboard.py`)
+
+流水线生产完毕后，创作者可通过本地响应式 Web 看板对 677 篇短视频进行高效质检与生命周期管理：
+
+```bash
+# 方式 1：直接运行 Python 快捷入口（自动拉起浏览器 http://localhost:8501）
+python dashboard.py
+# 或
+python 04_review_dashboard.py
+
+# 方式 2：标准 Streamlit 命令启动
+streamlit run 04_review_dashboard.py
+```
+
+**看板核心特性**：
+- 📊 **全局 KPI 与进度条**：全书 677 条知识库进度、各状态分布（Pending, Media_Generated, Completed, Approved, Failed）；
+- 🎥 **发布四件套视听播放**：内嵌 1080×1920 竖屏播放器、封面卡片预览、独立外挂 SRT 软字幕实时查阅与一键下载；
+- 📢 **多平台营销文案面板**：小红书/抖音/微信视频号三大选项卡、爆款标题、Emoji 排版正文与垂直标签**一键全选复制**；
+- 🎨 **分镜多模态排查矩阵**：逐幕核验黄金分割大字、AI 选风依据、TTS 口播音频与 I2V 微动切片同屏对比；
+- 🛠️ **人机审核工单流转**：支持一键「⭐ 审核通过 (Mark Approved)」、输入修改意见「📝 标记需修订 (Needs Revision)」与「🔄 状态弹性重置 (Reset)」。
 
 ---
 

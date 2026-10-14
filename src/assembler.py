@@ -24,6 +24,8 @@ from moviepy import (
     CompositeVideoClip,
     ImageClip,
     VideoClip,
+    VideoFileClip,
+    concatenate_videoclips,
 )
 import moviepy.audio.fx as afx
 import moviepy.video.fx as vfx
@@ -378,6 +380,75 @@ class VideoAssembler:
 
         return VideoClip(make_frame, duration=duration)
 
+    def create_freeze_and_drift_clip(
+        self,
+        video_path: str,
+        target_duration: float,
+        motion_type: str = "zoom_in",
+        fallback_image_path: Optional[str] = None
+    ) -> VideoClip:
+        """
+        Create an adaptive I2V video background with Freeze-and-Drift tail expansion.
+        (ADR-010 / TASK-5.0)
+
+        When video duration T_video < target_duration:
+          1. Plays the authentic physical micro-motion video slice (0 to T_video);
+          2. Extracts the tail frame (at T_video - 0.04s);
+          3. Applies subtle organic drifting (scale drift < 1.5%) for the remaining ΔT,
+             maintaining cinematic visual continuity and exact audio alignment.
+
+        When video duration T_video >= target_duration:
+          Subclips the video directly to target_duration.
+        """
+        if not os.path.exists(video_path):
+            if fallback_image_path and os.path.exists(fallback_image_path):
+                return self.create_animated_scene_clip(fallback_image_path, target_duration, motion_type)
+            raise FileNotFoundError(f"I2V video file not found: {video_path}")
+
+        vclip = VideoFileClip(video_path)
+        v_dur = float(vclip.duration)
+
+        # Match dimensions if needed
+        if vclip.size != (self.width, self.height):
+            vclip = vclip.resized(new_size=(self.width, self.height))
+
+        # Case A: Video duration satisfies or exceeds target duration
+        if v_dur >= target_duration - 0.05:
+            return vclip.subclipped(0, target_duration)
+
+        # Case B: Video duration is shorter than target duration (Freeze-and-Drift)
+        delta_t = round(target_duration - v_dur, 3)
+        if delta_t <= 0.02:
+            return vclip.subclipped(0, min(v_dur, target_duration))
+
+        # Grab last frame safely
+        last_t = max(0.0, v_dur - 0.05)
+        last_frame_arr = vclip.get_frame(last_t)
+        last_img = Image.fromarray(last_frame_arr)
+
+        margin = 1.05
+        bw = int(self.width * margin)
+        bh = int(self.height * margin)
+        expanded = last_img.resize((bw, bh), Image.Resampling.BILINEAR)
+
+        def make_drift_frame(t):
+            p = min(max(t / max(delta_t, 0.1), 0.0), 1.0)
+            smooth_p = 0.5 * (1.0 - math.cos(math.pi * p))
+            # Subtle 1.2% slow drift breathing
+            scale = 1.0 + 0.012 * smooth_p
+            cw = int(self.width * margin / scale)
+            ch = int(self.height * margin / scale)
+            left = (bw - cw) // 2
+            top = (bh - ch) // 2
+            cropped = expanded.crop((left, top, left + cw, top + ch))
+            if cropped.size != (self.width, self.height):
+                cropped = cropped.resize((self.width, self.height), Image.Resampling.BILINEAR)
+            return np.array(cropped)
+
+        drift_clip = VideoClip(make_drift_frame, duration=delta_t)
+        composite = concatenate_videoclips([vclip, drift_clip])
+        return composite
+
     def assemble_scene_clip(
         self,
         scene: Dict[str, Any],
@@ -385,11 +456,28 @@ class VideoAssembler:
         motion_type: str = "zoom_in"
     ) -> CompositeVideoClip:
         """
-        Assemble dynamic camera background, upper golden ratio kinetic badge,
-        and lower golden ratio narration capsule.
+        Assemble dynamic camera background (I2V or Ken Burns),
+        upper golden ratio kinetic badge, and lower golden ratio narration capsule.
         """
         img_path = scene.get("local_image_path", "")
-        bg_clip = self.create_animated_scene_clip(img_path, duration=duration, motion_type=motion_type)
+        video_path = scene.get("local_video_path", "")
+
+        bg_clip = None
+        if video_path and os.path.exists(video_path):
+            try:
+                bg_clip = self.create_freeze_and_drift_clip(
+                    video_path=video_path,
+                    target_duration=duration,
+                    motion_type=motion_type,
+                    fallback_image_path=img_path,
+                )
+            except Exception as e:
+                print(f"⚠️ I2V clip loading failed ({e}), falling back to Ken Burns image motion: {img_path}")
+                bg_clip = None
+
+        if bg_clip is None:
+            bg_clip = self.create_animated_scene_clip(img_path, duration=duration, motion_type=motion_type)
+
         layers = [bg_clip]
 
         # 1. Kinetic typography card at Upper Golden Ratio Point (Y ~ 733px)

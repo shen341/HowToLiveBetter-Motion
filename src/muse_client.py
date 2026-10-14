@@ -2,6 +2,7 @@
 
 import base64
 import json
+import math
 import os
 import re
 import time
@@ -14,12 +15,18 @@ from PIL import Image, ImageDraw, ImageFont
 from src.config import (
     API_MAX_RETRIES,
     API_RETRY_DELAY,
+    API_TIMEOUT_SECONDS,
+    DEFAULT_MOTION_MODE,
     MODEL_IMAGE,
     MODEL_TEXT,
     MODEL_VIDEO,
     MUSE_API_KEY,
     MUSE_BASE_URL,
     RATE_LIMIT_MUSE_RPM,
+    YOURSELFAI_API_KEY,
+    YOURSELFAI_BASE_URL,
+    YOURSELFAI_IMAGE_MODEL,
+    YOURSELFAI_MODEL,
 )
 from src.prompt_builder import (
     STYLE_RECIPES,
@@ -28,7 +35,36 @@ from src.prompt_builder import (
     get_style_recipe,
     recommend_style_for_entry,
 )
-from src.rate_limiter import TokenBucketLimiter, retry_with_backoff
+from src.rate_limiter import TokenBucketLimiter, _safe_print, retry_with_backoff
+
+print = _safe_print
+
+
+def is_i2v_scene(scene_index: int, total_scenes: int = 6, motion_mode: str = "static") -> bool:
+    """Determine whether a scene qualifies for I2V micro-motion generation.
+
+    Args:
+        scene_index: 1-indexed scene position (e.g. 1 to 6).
+        total_scenes: Total number of scenes in the storyboard.
+        motion_mode:
+            - 'static': Ken Burns only (no video API calls, default)
+            - 'i2v-tier1': Scenes 1 & 5 only (The Hook and Action demonstration)
+            - 'i2v-all': All scenes generate I2V video
+    """
+    mode = (motion_mode or "").lower().strip()
+    if mode in ("static", "none", "off", "ken_burns", ""):
+        return False
+    if mode in ("i2v-all", "all", "full"):
+        return True
+    if mode in ("i2v-tier1", "tier1", "smart"):
+        # Tier-1 Focus: Scene 1 (The Hook) & Scene 5 (Action demonstration in 6-scene setup)
+        if total_scenes >= 5:
+            return scene_index in (1, 5)
+        elif total_scenes >= 3:
+            return scene_index in (1, total_scenes - 1)
+        else:
+            return scene_index == 1
+    return False
 
 
 class MuseClient:
@@ -42,6 +78,11 @@ class MuseClient:
         rate_limit_rpm: Optional[int] = None,
         max_retries: Optional[int] = None,
         retry_delay: Optional[float] = None,
+        timeout: Optional[float] = None,
+        fallback_api_key: Optional[str] = None,
+        fallback_base_url: Optional[str] = None,
+        fallback_image_model: Optional[str] = None,
+        fallback_text_model: Optional[str] = None,
     ):
         self.api_key = api_key or MUSE_API_KEY or os.getenv("MUSE_API_KEY", "")
         self.base_url = base_url or MUSE_BASE_URL or os.getenv("MUSE_BASE_URL", "https://yourselfai.org/muse/v1")
@@ -49,16 +90,36 @@ class MuseClient:
         self.rate_limit_rpm = rate_limit_rpm if rate_limit_rpm is not None else RATE_LIMIT_MUSE_RPM
         self.max_retries = max_retries if max_retries is not None else API_MAX_RETRIES
         self.retry_delay = retry_delay if retry_delay is not None else API_RETRY_DELAY
+        self.timeout = timeout if timeout is not None else API_TIMEOUT_SECONDS
+
+        # Fallback OpenAI-compatible API config (YourselfAI)
+        self.fallback_api_key = fallback_api_key or YOURSELFAI_API_KEY or os.getenv("YOURSELFAI_API_KEY", "")
+        self.fallback_base_url = fallback_base_url or YOURSELFAI_BASE_URL or os.getenv("YOURSELFAI_BASE_URL", "https://yourselfai.org/v1")
+        self.fallback_image_model = fallback_image_model or YOURSELFAI_IMAGE_MODEL or os.getenv("YOURSELFAI_IMAGE_MODEL", "gemini-3.1-flash-image")
+        self.fallback_text_model = fallback_text_model or YOURSELFAI_MODEL or os.getenv("YOURSELFAI_MODEL", "gemini-3.8-flash-high")
 
         self.limiter = TokenBucketLimiter(rate_per_minute=self.rate_limit_rpm)
 
         if not self.mock:
-            self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=self.timeout
+            )
         else:
             self.client = None
 
+        if self.fallback_api_key and not self.mock:
+            self.fallback_client = OpenAI(
+                api_key=self.fallback_api_key,
+                base_url=self.fallback_base_url,
+                timeout=self.timeout
+            )
+        else:
+            self.fallback_client = None
+
     def generate_script(self, entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> Dict[str, Any]:
-        """Generate a structured storyboard JSON using muse-spark.
+        """Generate a structured storyboard JSON using muse-spark (or fallback to YourselfAI / rule-based).
         
         Args:
             entry: Entry data dictionary.
@@ -71,73 +132,355 @@ class MuseClient:
         system_prompt = build_system_prompt(scene_count=scene_count)
         user_prompt = build_user_prompt(entry, style_mode=style_mode, scene_count=scene_count)
 
+        # 1. 主路线: Muse-Spark (启用 stream=True 保活防超时)
         def _do_generate_script():
-            return self.client.chat.completions.create(
+            stream_resp = self.client.chat.completions.create(
                 model=MODEL_TEXT,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.4
+                temperature=0.4,
+                stream=True
             )
+            chunks = []
+            for chunk in stream_resp:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    chunks.append(chunk.choices[0].delta.content)
+            return "".join(chunks)
 
         try:
-            response = retry_with_backoff(
+            raw_content = retry_with_backoff(
                 _do_generate_script,
-                max_retries=self.max_retries,
+                max_retries=min(self.max_retries, 2),
                 initial_delay=self.retry_delay,
                 service_name="Muse-Spark",
                 limiter=self.limiter,
             )
-            raw_content = response.choices[0].message.content
             return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode, scene_count=scene_count)
         except Exception as e:
-            print(f"⚠️ Live muse-spark failed after {self.max_retries} attempts: {e}. Falling back to rule-based storyboard...")
-            return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count)
+            print(f"⚠️ [主线路 Muse-Spark] 遇到限速/拥堵或调用异常: {e}.")
+
+        # 2. 备选路线: YourselfAI (OpenAI 兼容协议)
+        if self.fallback_client:
+            print(f"🔄 [容灾切换] 启动备选大模型: {self.fallback_base_url} [模型: {self.fallback_text_model}] 生成结构化分镜脚本...")
+            try:
+                def _do_fallback_script():
+                    stream_resp = self.fallback_client.chat.completions.create(
+                        model=self.fallback_text_model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        temperature=0.4,
+                        stream=True
+                    )
+                    chunks = []
+                    for chunk in stream_resp:
+                        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                            chunks.append(chunk.choices[0].delta.content)
+                    return "".join(chunks)
+                raw_content = retry_with_backoff(
+                    _do_fallback_script,
+                    max_retries=2,
+                    initial_delay=self.retry_delay,
+                    service_name="YourselfAI-Text-Fallback",
+                    limiter=None,
+                )
+                print(f"   ✅ [备选线路] 成功通过 {self.fallback_text_model} 生成分镜脚本！")
+                return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode, scene_count=scene_count)
+            except Exception as fb_err:
+                print(f"⚠️ [备选线路] 分镜脚本生成亦失败: {fb_err}.")
+
+        # 3. 兜底降级: 规则驱动本地分镜
+        print("⚠️ 降级为规则驱动的本地分镜脚本生成 (Mock Fallback)...")
+        return self._mock_script_generation(entry, style_mode=style_mode, scene_count=scene_count)
+
+    def _save_image_from_response(self, response: Any, output_path: str) -> str:
+        """Helper to extract b64_json or url from ImagesResponse and write to disk."""
+        if not response or not hasattr(response, "data") or not response.data:
+            raise ValueError("No data returned in images response.")
+        image_data = response.data[0]
+        if hasattr(image_data, "b64_json") and image_data.b64_json:
+            img_bytes = base64.b64decode(image_data.b64_json)
+            with open(output_path, "wb") as f:
+                f.write(img_bytes)
+        elif hasattr(image_data, "url") and image_data.url:
+            resp = requests.get(image_data.url, timeout=45)
+            resp.raise_for_status()
+            with open(output_path, "wb") as f:
+                f.write(resp.content)
+        else:
+            raise ValueError("No valid image data (b64_json or url) in response item.")
+        return output_path
+
+    def _generate_image_via_chat_completions(self, prompt: str, output_path: str) -> str:
+        """Generate image via OpenAI-compatible /v1/chat/completions endpoint (e.g. gemini-3.1-flash-image)."""
+        url = f"{self.fallback_base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.fallback_api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": self.fallback_image_model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "stream": False
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=max(self.timeout or 60.0, 90.0))
+        if resp.status_code != 200:
+            raise RuntimeError(f"Chat completion image generation failed with HTTP {resp.status_code}: {resp.text[:200]}")
+
+        data = resp.json()
+        choices = data.get("choices", [])
+        if not choices:
+            raise ValueError(f"No choices returned in chat completion response: {data}")
+
+        message = choices[0].get("message", {})
+
+        # 1. 优先从 message.images 中提取图像 (YourselfAI / NewAPI Gemini 生图标准返回格式)
+        image_url = None
+        images = message.get("images") or []
+        if images and isinstance(images, list):
+            item = images[0]
+            if isinstance(item, dict):
+                if "image_url" in item and isinstance(item["image_url"], dict):
+                    image_url = item["image_url"].get("url")
+                elif "url" in item:
+                    image_url = item.get("url")
+                elif "b64_json" in item:
+                    image_url = item.get("b64_json")
+            elif isinstance(item, str):
+                image_url = item
+
+        # 2. 次选从 message.content 中解析 Markdown 图片或 Data URL 字符串
+        if not image_url and message.get("content"):
+            content = str(message["content"]).strip()
+            m_md = re.search(r'!\[.*?\]\((.*?)\)', content)
+            if m_md:
+                image_url = m_md.group(1).strip()
+            elif content.startswith("data:image/") or content.startswith("http://") or content.startswith("https://"):
+                image_url = content
+            else:
+                m_b64 = re.search(r'(data:image/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)', content)
+                if m_b64:
+                    image_url = m_b64.group(1)
+
+        if not image_url:
+            raise ValueError(f"No image data found in chat completion message: {message}")
+
+        # 3. 写入目标路径 (支持 base64 data url 或远程 http 资源)
+        if image_url.startswith("data:image/") or ";base64," in image_url:
+            if "," in image_url:
+                _, b64_str = image_url.split(",", 1)
+            else:
+                b64_str = image_url
+            img_bytes = base64.b64decode(b64_str)
+            with open(output_path, "wb") as f:
+                f.write(img_bytes)
+        elif image_url.startswith("http://") or image_url.startswith("https://"):
+            dl_resp = requests.get(image_url, timeout=60)
+            dl_resp.raise_for_status()
+            with open(output_path, "wb") as f:
+                f.write(dl_resp.content)
+        else:
+            try:
+                img_bytes = base64.b64decode(image_url)
+                with open(output_path, "wb") as f:
+                    f.write(img_bytes)
+            except Exception:
+                raise ValueError(f"Unrecognized image data format: {image_url[:100]}")
+
+        return output_path
+
+    def _generate_image_via_fallback(self, prompt: str, output_path: str) -> str:
+        """Generate image using fallback client with model compatibility handling."""
+        model_lower = (self.fallback_image_model or "").lower()
+        # Gemini 兼容生图模型 (如 gemini-3.1-flash-image) 在 YourselfAI 上是通过 /v1/chat/completions 路由提供
+        if "gemini" in model_lower:
+            return self._generate_image_via_chat_completions(prompt, output_path)
+
+        try:
+            resp = self.fallback_client.images.generate(
+                model=self.fallback_image_model,
+                prompt=prompt,
+                size="1024x1792"
+            )
+            return self._save_image_from_response(resp, output_path)
+        except Exception as err:
+            err_str = str(err).lower()
+            # 若提示模型不支持 /v1/images/generations，尝试转至 /v1/chat/completions 路由
+            if "not supported on /v1/images" in err_str or "chat" in err_str:
+                return self._generate_image_via_chat_completions(prompt, output_path)
+
+            if any(k in err_str for k in ("size", "dimension", "not supported", "invalid")):
+                try:
+                    resp = self.fallback_client.images.generate(
+                        model=self.fallback_image_model,
+                        prompt=prompt
+                    )
+                    return self._save_image_from_response(resp, output_path)
+                except Exception:
+                    try:
+                        resp = self.fallback_client.images.generate(
+                            model=self.fallback_image_model,
+                            prompt=prompt,
+                            size="1024x1024"
+                        )
+                        return self._save_image_from_response(resp, output_path)
+                    except Exception:
+                        return self._generate_image_via_chat_completions(prompt, output_path)
+            raise err
 
     def generate_image(self, prompt: str, output_path: str, style_id: str = "25_ghibli") -> str:
-        """Generate a real 1024x1792 vertical image using muse-image."""
+        """Generate a real 1024x1792 vertical image using muse-image with automatic fallback route.
+        
+        Fallback policy:
+        1. Primary: Muse-Image on muse/v1.
+        2. Fallback: OpenAI-compatible API on YourselfAI (gemini-3.1-flash-image) if primary fails/rate-limited.
+        3. Degradation: Styled mock placeholder if all API calls fail.
+        """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         if self.mock:
             return self._mock_image_generation(prompt, output_path, style_id)
 
-        def _do_generate_image():
-            response = self.client.images.generate(
-                model=MODEL_IMAGE,
-                prompt=prompt,
-                size="1024x1792"
-            )
-            image_data = response.data[0]
-            if hasattr(image_data, "b64_json") and image_data.b64_json:
-                img_bytes = base64.b64decode(image_data.b64_json)
-                with open(output_path, "wb") as f:
-                    f.write(img_bytes)
-            elif hasattr(image_data, "url") and image_data.url:
-                resp = requests.get(image_data.url, timeout=45)
-                resp.raise_for_status()
-                with open(output_path, "wb") as f:
-                    f.write(resp.content)
-            else:
-                raise ValueError("No image data (b64 or url) returned from API response.")
-            return output_path
-
+        # 1. 尝试主线路: Muse-Image
         try:
-            return retry_with_backoff(
-                _do_generate_image,
-                max_retries=self.max_retries,
+            def _do_primary_image():
+                response = self.client.images.generate(
+                    model=MODEL_IMAGE,
+                    prompt=prompt,
+                    size="1024x1792"
+                )
+                return self._save_image_from_response(response, output_path)
+
+            retry_with_backoff(
+                _do_primary_image,
+                max_retries=min(self.max_retries, 2),
                 initial_delay=self.retry_delay,
                 service_name="Muse-Image",
                 limiter=self.limiter,
             )
-        except Exception as e:
-            print(f"⚠️ Live image generation failed after {self.max_retries} attempts: {e}. Falling back to styled placeholder...")
-            return self._mock_image_generation(prompt, output_path, style_id)
+            return output_path
+        except Exception as e_primary:
+            print(f"      ⚠️ [主线路 Muse-Image] 遇到限速/拥堵或调用异常: {e_primary}")
 
-    def generate_video(self, prompt: str, output_path: str, image_path: Optional[str] = None) -> str:
-        """Generate video asset."""
+        # 2. 尝试备选线路: YourselfAI (OpenAI 兼容协议, 模型 gemini-3.1-flash-image)
+        if self.fallback_client:
+            print(f"      🔄 [容灾切换] 启动备选生图路线: {self.fallback_base_url} [模型: {self.fallback_image_model}]...")
+            try:
+                def _do_fallback_image():
+                    return self._generate_image_via_fallback(prompt, output_path)
+
+                retry_with_backoff(
+                    _do_fallback_image,
+                    max_retries=2,
+                    initial_delay=self.retry_delay,
+                    service_name="YourselfAI-Fallback-Image",
+                    limiter=None,
+                )
+                print(f"      ✅ [备选线路] 成功通过 {self.fallback_image_model} 绘制原画就绪！")
+                return output_path
+            except Exception as e_fallback:
+                print(f"      ⚠️ [备选线路 YourselfAI] 亦生成失败: {e_fallback}")
+        else:
+            if not self.fallback_api_key:
+                print(f"      ℹ️ 未检测到 YOURSELFAI_API_KEY 配置，跳过备选路线。可在 .env 中添加 YOURSELFAI_API_KEY 启用备用线路。")
+
+        # 3. 兜底降级方案: 本地风格化占位原画
+        print(f"      ⚠️ 主备生图路线均未成功，降级生成风格化占位素材...")
+        return self._mock_image_generation(prompt, output_path, style_id)
+
+    def generate_video(
+        self,
+        prompt: str,
+        output_path: str,
+        image_path: Optional[str] = None,
+        duration_sec: float = 3.0,
+    ) -> str:
+        """Generate a micro-motion video slice (I2V or synthetic) driven by the initial image frame.
+
+        Args:
+            prompt: Video motion prompt describing movement.
+            output_path: Destination .mp4 file path.
+            image_path: Source keyframe image path used as first frame for I2V.
+            duration_sec: Target motion clip duration (default: 3.0 seconds).
+
+        Returns:
+            The generated video output path.
+        """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        return output_path
+
+        if self.mock:
+            return self._mock_video_generation(prompt, output_path, image_path, duration_sec)
+
+        def _do_generate_video():
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            payload: Dict[str, Any] = {
+                "model": MODEL_VIDEO,
+                "prompt": prompt,
+                "duration": duration_sec,
+                "aspect_ratio": "9:16",
+            }
+            if image_path and os.path.exists(image_path):
+                with open(image_path, "rb") as f:
+                    img_b64 = base64.b64encode(f.read()).decode("utf-8")
+                payload["image"] = f"data:image/png;base64,{img_b64}"
+                payload["first_frame_image"] = payload["image"]
+
+            video_url = None
+            endpoints = [
+                f"{self.base_url.rstrip('/')}/videos/generations",
+                f"{self.base_url.rstrip('/')}/videos",
+            ]
+            last_err = None
+            for ep in endpoints:
+                try:
+                    resp = requests.post(ep, headers=headers, json=payload, timeout=50)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if "data" in data and len(data["data"]) > 0:
+                            item = data["data"][0]
+                            video_url = item.get("url") or item.get("b64_json")
+                            break
+                        elif "url" in data:
+                            video_url = data["url"]
+                            break
+                    else:
+                        last_err = f"HTTP {resp.status_code}: {resp.text[:100]}"
+                except Exception as ex:
+                    last_err = str(ex)
+
+            if video_url:
+                if video_url.startswith("http"):
+                    r_dl = requests.get(video_url, timeout=60)
+                    r_dl.raise_for_status()
+                    with open(output_path, "wb") as f:
+                        f.write(r_dl.content)
+                else:
+                    vid_bytes = base64.b64decode(video_url)
+                    with open(output_path, "wb") as f:
+                        f.write(vid_bytes)
+                return output_path
+
+            raise RuntimeError(f"Video generation endpoint returned no URL (last error: {last_err})")
+
+        try:
+            return retry_with_backoff(
+                _do_generate_video,
+                max_retries=self.max_retries,
+                initial_delay=self.retry_delay,
+                service_name="Muse-Video",
+                limiter=self.limiter,
+            )
+        except Exception as e:
+            print(f"⚠️ Live I2V video generation failed: {e}. Falling back to styled micro-motion synthesis...")
+            return self._mock_video_generation(prompt, output_path, image_path, duration_sec)
 
     def _clean_and_parse_json(self, raw_content: str, entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> Dict[str, Any]:
         """Strip markdown fences and parse JSON robustly with multiple fallbacks."""
@@ -392,3 +735,58 @@ class MuseClient:
 
         img.save(output_path, quality=95)
         return output_path
+
+    def _mock_video_generation(
+        self,
+        prompt: str,
+        output_path: str,
+        image_path: Optional[str] = None,
+        duration_sec: float = 3.0
+    ) -> str:
+        """Synthesize a smooth micro-motion MP4 from the initial image frame."""
+        import numpy as np
+        from moviepy import VideoClip
+
+        width, height = 1080, 1920
+        if image_path and os.path.exists(image_path):
+            try:
+                base_img = Image.open(image_path).convert("RGB")
+                if base_img.size != (width, height):
+                    base_img = base_img.resize((width, height), Image.Resampling.BILINEAR)
+            except Exception:
+                base_img = Image.new("RGB", (width, height), (30, 42, 56))
+        else:
+            base_img = Image.new("RGB", (width, height), (30, 42, 56))
+
+        # Margin expansion for organic physical push-in
+        margin = 1.05
+        bw = int(width * margin)
+        bh = int(height * margin)
+        expanded = base_img.resize((bw, bh), Image.Resampling.BILINEAR)
+
+        # Micro motion frame generator (24 fps, subtle 3% zoom + gentle breathing)
+        def make_frame(t):
+            p = min(max(t / max(duration_sec, 0.1), 0.0), 1.0)
+            smooth_p = 0.5 * (1.0 - math.cos(math.pi * p))
+            scale = 1.0 + 0.03 * smooth_p
+            cw = int(width * margin / scale)
+            ch = int(height * margin / scale)
+            left = (bw - cw) // 2
+            top = (bh - ch) // 2
+            cropped = expanded.crop((left, top, left + cw, top + ch))
+            if cropped.size != (width, height):
+                cropped = cropped.resize((width, height), Image.Resampling.BILINEAR)
+            return np.array(cropped)
+
+        clip = VideoClip(make_frame, duration=duration_sec)
+        clip.write_videofile(
+            output_path,
+            fps=24,
+            codec="libx264",
+            preset="ultrafast",
+            pixel_format="yuv420p",
+            logger=None
+        )
+        clip.close()
+        return output_path
+

@@ -11,7 +11,8 @@
 - **Python 版本**：Python 3.10 ~ 3.14
 - **硬件要求**：
   - CPU：4 核以上
-  - 内存：8GB RAM 以上（MoviePy 视频渲染峰值占用约 1~2GB）
+  - 内存：8GB RAM 以上（MoviePy 视频渲染单条峰值占用约 1~2GB；若具备 32GB 内存则支持高并发批量合成）
+  - 显卡 (GPU)：当前标准流程**无需独立显卡**（大模型、生图与 TTS 全流程走云端 API，视频默认采用 CPU 软编）。若本机配备 NVIDIA 独立显卡（如 RTX 4070 12GB），已在底层支持 NVENC 秒级硬件压缩，并规划了未来纯离线本地化 AI 演进，详见 [ADR-015 (本地化 AI 演进路线与 RTX 4070 适配架构)](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-015-Local-AI-Roadmap-and-RTX4070-Adaptation.md)
   - 磁盘空间：至少保留 5GB 剩余空间（存放高清素材与导出成片）
 
 ### 1.2 依赖安装
@@ -60,11 +61,14 @@ TTS_STYLE=general
 
 ## 3. 标准生产作业流程 (Standard SOP)
 
-整个短视频自动化生产流水线由 3 个独立且解耦的步骤组成，支持随时中断和断点续传：
+整个短视频自动化生产流水线由结构化解耦的步骤组成，支持随时中断、断点续传与离线降级：
 
 ```
-[01_data_extractor.py] ──► [02_ai_generator.py] ──► [03_video_assembler.py] ──► 成片交付
-      (数据抽取)                 (分镜+生图+TTS)                (运镜+文字+混音)
+[01_data_extractor.py] ──► [02_ai_generator.py] ──► [03_video_assembler.py] ──► [src.copywriter] ──► [04_review_dashboard.py]
+      (数据抽取)                 (分镜+生图+TTS)            (运镜+字幕+压缩预设)         (多平台营销文案)           (本地Web质检流转)
+                                                                                                        │
+                                                                                                        ▼
+                                                                                           最终交付标准化发布四件套
 ```
 
 ---
@@ -110,13 +114,19 @@ python 02_ai_generator.py --limit 10 --rpm-muse 30 --rpm-tts 60 --max-retries 3
 
 # 2.6 离线/模拟测试模式 (不消耗 API 额度，快速验证流程)
 python 02_ai_generator.py --entry-id 01_001 --mock --force
+
+# 2.7 图生视频 (I2V) 混合动态微动模式调度 (ADR-010)
+# static: 纯静态原画+运镜(默认); i2v-tier1: 仅第1/5幕物理微动(推荐高性价比); i2v-all: 全片6幕微动
+python 02_ai_generator.py --entry-id 01_001 --motion-mode i2v-tier1
 ```
 
 - **输出产物**（存放于 `output/raw_assets/{entry_id}/`）：
   - `cover.png`：1080×1920 竖屏高辨识度专属封面卡片（小红书/抖音首选发布首图）。
-  - `subtitles.srt`：[新增] 标准独立 SRT 字幕文件（分镜精准对齐时间戳）。
-  - `storyboard.json`：分镜脚本、Prompt、所选画风与选风理由、精准语音与分镜时长。
+  - `subtitles.srt`：标准独立 SRT 字幕文件（分镜精准对齐时间戳）。
+  - `copywriting.json`：[新增] 包含小红书、抖音、微信视频号三大平台的结构化营销文案与标签。
+  - `storyboard.json`：分镜脚本、Prompt、动态微动提示词、所选画风与选风理由、精准语音与分镜时长。
   - `scene_01.png` ~ `scene_06.png`：1024×1792 竖屏原画素材。
+  - `motion_01.mp4` ~ `motion_06.mp4`：(I2V 模式下) 生成的 3s 物理微动作视频切片。
   - `voice_01.mp3` ~ `voice_06.mp3`：各分镜解说音频。
 
 > 💡 **独立重制封面卡片与字幕命令**：
@@ -125,28 +135,60 @@ python 02_ai_generator.py --entry-id 01_001 --mock --force
 
 ---
 
-### 步骤 3：影视级视频组装与双轨混音 (`03_video_assembler.py`)
+### 步骤 3：影视级视频组装、码率压缩与交付四件套 (`03_video_assembler.py`)
 
-本步骤将图片、运镜动效、转场溶解、黄金分割点文字卡片及 BGM 进行渲染，输出最终 MP4，并自动将发布首图与独立 SRT 字幕同步复制至交付目录。
+本步骤将图片或 I2V 微动切片、自适应尾帧缓动定格 (Freeze-and-Drift)、转场溶解、黄金分割点文字卡片及 BGM 进行渲染，输出最终 MP4，并自动将发布首图、独立 SRT 字幕与营销文案同步复制至交付目录。
 
 ```powershell
-# 3.1 合成指定条目的最终成片
+# 3.1 合成指定条目的最终成片 (默认 default 通用码率)
 python 03_video_assembler.py --entry-id 01_001
 
 # 3.2 批量合成已完成素材生成的全部视频
 python 03_video_assembler.py --limit 5
 
-# 3.3 强制重新渲染合成
+# 3.3 针对目标社交平台启用定制化码率压缩预设与流式秒开 (ADR-012)
+# 可选预设: xhs (小红书抗二压), douyin (抖音高清), wechat (微信秒开), bilibili, default
+python 03_video_assembler.py --entry-id 01_001 --preset xhs
+
+# 3.4 启用 I2V 混合微动合成
+python 03_video_assembler.py --entry-id 01_001 --motion-mode i2v-tier1
+
+# 3.5 强制重新渲染合成
 python 03_video_assembler.py --entry-id 01_001 --force
 
-# 3.4 导出断句级细分字幕（按标点自适应比例切分长句）
+# 3.6 导出断句级细分字幕（按标点自适应比例切分长句）
 python 03_video_assembler.py --entry-id 01_001 --force --split-srt
 ```
 
 - **输出产物**（存放于 `output/final_videos/`）：
-  - `{entry_id}_{章节名}之{小条目标题}.mp4`：1080×1920 竖屏成片（约 28~32 秒，8~15MB）。
+  - `{entry_id}_{章节名}之{小条目标题}.mp4`：1080×1920 竖屏成片（约 28~32 秒，10~20MB 最优画质与体积，注入 faststart 流式秒开）。
   - `{entry_id}_{章节名}之{小条目标题}_cover.png`：配套的高清专属发布首图。
-  - `{entry_id}_{章节名}之{小条目标题}.srt`：[新增] 配套的标准独立外挂字幕（媒体播放器与剪映自动关联）。
+  - `{entry_id}_{章节名}之{小条目标题}.srt`：配套的标准独立外挂字幕（媒体播放器与剪映自动关联）。
+  - `{entry_id}_{章节名}之{小条目标题}_copywriting.txt`：[新增] 配套的多平台营销文案与高权重标签发布文件。
+
+---
+
+### 步骤 4：多平台营销文案与高权重标签生成 (`src/copywriter.py`)
+
+本步骤调用大模型（或离线高拟真模板）针对条目提炼适合小红书、抖音、微信视频号的爆款标题、痛点导语、Emoji 分点正文与垂直话题标签，直接生成运营一键复制发布的四件套之一。
+
+```powershell
+# 4.1 单条条目生成营销文案 (默认使用 muse-spark)
+python -m src.copywriter --entry-id 01_001
+
+# 4.2 离线快速生成 (使用内置高拟真模版，无需 API 额度)
+python -m src.copywriter --entry-id 01_001 --mock
+
+# 4.3 批量为所有已有产物的条目生成营销文案
+python -m src.copywriter --all --mock
+
+# 4.4 强制覆盖已存在的文案
+python -m src.copywriter --entry-id 01_001 --force
+```
+
+- **输出产物**：
+  - 机器可读：`output/raw_assets/{entry_id}/copywriting.json`
+  - 运营可复制：`output/final_videos/{clean_name}_copywriting.txt`
 
 
 ---
@@ -248,6 +290,35 @@ python -c "import sqlite3; conn=sqlite3.connect('pipeline.db'); conn.execute('UP
 - [ ] **6. 画面质感**：画面是否统一遵循指定艺术风格？各分镜切换是否自然无突兀卡顿？
 - [ ] **7. 专属封面卡片**：交付目录是否已包含配套的 `{clean_name}_cover.png`？标题排版无误、无方块符号乱码，可作为发布首图。
 - [ ] **8. 独立外挂字幕**：交付目录是否已包含同名 `{clean_name}.srt`？播放器外挂或导入剪映时时间轴无偏差。
+- [ ] **9. 多平台营销文案与标签**：交付目录是否已包含配套的 `{clean_name}_copywriting.txt`？在 Web 审核看板中确认小红书爆款排版、抖音短标题和视频号转发语无违禁词且标签垂直精准。
+
+---
+
+## 7.5 创作者本地可视化 Web 审核看板 (Web Review Dashboard)
+
+为杜绝创作者在 Windows 资源管理器与命令行中低效翻找上千个文件，系统提供了基于 Streamlit 的极简本地响应式审核看板（**ADR-013**, **ADR-014**）：
+
+```powershell
+# 极简双击/单行启动（自动打开默认浏览器访问 http://localhost:8501）
+python dashboard.py
+
+# 或使用标准 Streamlit 命令
+streamlit run 04_review_dashboard.py
+```
+
+### 审核看板核心操作场景：
+1. **全书 677 篇大盘透视**：顶部实时 KPI 汇报总条目、成片数、审核通过数、各章节进度条；
+2. **发布四件套集中核验**：左侧一键点播 1080×1920 竖屏成片（含体积/码率预设与秒开参数展示）、预览高清封面卡片、在线查阅带毫秒级时间戳的 SRT 软字幕并提供一键下载；
+3. **📢 多平台爆款营销文案与标签面板**：
+   - 支持 **📕 小红书专属**、**🎵 抖音短视频**、**🟢 微信视频号** 三大平台分 Tab 预览；
+   - 包含吸睛候选标题、痛点导语、Emoji 分点易读正文与垂直话题标签；
+   - 提供**一键全选发布文案代码块**，直接复制即可粘贴至平台创作者中心，告别繁重手工编辑；
+   - 未生成文案的条目支持在看板内点击「✨ 立即生成多平台文案」就地补齐。
+4. **分镜级多模态深度排查**：右侧逐幕核验黄金分割大字、AI 自主选风决策依据、独立播放各幕 TTS 语音对比音画对齐度、同屏排查首帧原画与 I2V 微动切片；
+5. **一键工单流转**：
+   - 点击 **`⭐ 审核通过 (Mark Approved)`**：将条目推进至业务终态 `Approved`，同步更新数据库与 `progress.json`；
+   - 点击 **`📝 标记需修订 (Needs Revision)`**：输入具体批注（如“第 3 幕原画需重抽”），持久化至条目 notes；
+   - 点击 **`🔄 重置状态`**：可将条目一键回退至 `Pending` 或 `Script_Generated`，方便流水线增量重新生成。
 
 ---
 
@@ -291,3 +362,54 @@ python -c "import sqlite3; conn=sqlite3.connect('pipeline.db'); conn.execute('UP
   # 导出自适应断句级细分 SRT（适合逐句跳字特效）
   python -m src.srt_generator --entry-id 01_001 --split
   ```
+
+### Q6: 如何单独生成或批量生成多平台营销文案与标签？
+- **直接调用文案模块**：
+  ```powershell
+  # 单条生成（调用 muse-spark）
+  python -m src.copywriter --entry-id 01_001
+
+  # 离线模拟批量生成（秒级就绪，适合大批量离线准备）
+  python -m src.copywriter --all --mock
+  ```
+- 生成后可直接在 `04_review_dashboard.py` 看板中一键复制，或直接打开 `output/final_videos/{clean_name}_copywriting.txt`。
+
+### Q7: 为什么不同社交平台导出视频体积不同？如何选择平台码率预设？
+- **原因**：根据 [ADR-012](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-012-Social-Platform-Bitrate-Presets.md)，各平台服务器转码策略不同（例如小红书容易二次压缩降低清晰度，微信视频号更注重在弱网环境下秒开）。
+- **参数选择指南**：
+  - 上传小红书：`python 03_video_assembler.py --entry-id 01_001 --preset xhs`（CRF=19, VBV=4500k，抗二压保清）；
+  - 上传抖音：`python 03_video_assembler.py --entry-id 01_001 --preset douyin`（CRF=20, VBV=6000k，高动态保真）；
+  - 上传微信视频号：`python 03_video_assembler.py --entry-id 01_001 --preset wechat`（CRF=22, VBV=3500k，体积约 10MB，朋友圈秒开加载）；
+  - 通用默认：`python 03_video_assembler.py --entry-id 01_001 --preset default`。
+- 所有预设均已强制注入 `-movflags +faststart`，保障手机端点开即播。
+
+### Q8: 调用主线路 Muse-Spark 或 Muse-Image 提示 `Request timed out` 或远端报 `MEMORY.md` 错误？
+- **原因**：根据 [ADR-016](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-016-Muse2API-Reverse-Proxy-Timeout-and-Agent-Memory-Isolation.md)：
+  1. 客户端超时设定过短（原 45s）：复杂 6 幕 JSON 分镜（40~120s）和 1024×1792 超清原画渲染（35~85s）超过 45s 时被客户端主动中断连接；
+  2. 远端 muse.ai 底层为 Agent 架构：若批量生成时复用旧会话，上下文积累会导致远端 Agent 擅自调用后台命令修改 `/home/hatch/MEMORY.md`，出现红色 `エラー` 并阻塞正文输出。
+- **解决对策**：
+  1. 确保 `.env` 中 `API_TIMEOUT_SECONDS=180.0`；
+  2. 服务端已应用会话强制隔离补丁，每次对话均自动导航至干净独立的 `/thread/new`，切断一切历史记忆干扰；
+  3. 提示词尾部保持强约束（`prompt_builder.py` 已内置“禁止调用工具、严禁编辑任何 MEMORY.md”铁律）。
+
+### Q9: muse 管理后台账号出现「任务异常: 参考图上传未确认，已停止生成」或「提示词发送未确认」？
+- **原因**：根据 [ADR-017](file:///c:/develop/HowToLiveBetter-Motion/docs/decisions/ADR-017-Native-CDP-File-Upload-and-Multi-Language-DOM-Robustness.md)：
+  1. **现代 Chromium 安全策略拦截**：旧版反代代码使用网页前端 JS `DataTransfer` 模拟向 `<input type="file">` 赋值，被 Chromium C++ 底层静默拦截，导致实际文件数量为 0，等待 15 秒后触发超时报错；
+  2. **DOM 结构与多语言选择器漂移**：远端 composer 去除了外层 `<form>` 标签；且部分账号界面为日文（发送按钮为 `送信`、移除附件为 `添付ファイルを削除`），旧版硬编码中英文字符串（`发送`/`send`/`移除附件`）无法命中；
+  3. **账号池连锁多米诺反应**：单个任务失败后服务端切号重试，池内所有账号相继失败并持久化错误 Note，同时霸占全局锁 (`GEN_LOCK`) 导致后续客户端请求连锁超时。
+- **解决对策**：
+  1. **换用原生 CDP 文件注入**：弃用 JS 模拟，改用 `DOM.setFileInputFiles(files=[tmp_file], objectId=...)`，以浏览器底层调试器最高权限将临时物理文件挂载至输入框，100% 触发 React 上传；
+  2. **多语言 DOM 全方位适配**：在 `_send`、`_clear_attachments`、`_attach_image`、`_download_fallback` 中全面兼容中/英/日（`送信`、`添付ファイルを削除`、`ダウンロード`、`ストップ` 等），并解除对 `<form>` 的依赖；
+  3. **空入参防御与自愈机制**：在 API 网关处严格清洗空字符串参考图，自动保活守护进程定期巡检唤醒 VM 并自动重置历史错误 Note。
+
+### Q10: 远端出现「这张按原描述没能生成出来，生成替代版：...点下面就行」及敏感词拦截？
+- **原因**：
+  1. **触发 Meta Hatch 内容安全策略 (AI Safety Guardrails)**：例如提示词中包含 `cigarette`, `smoking`, `ashtray filled with ashes`, `blood`, `wound` 等烟草/吸烟、医疗创伤敏感元素时，底层生图模型拒绝生成；
+  2. **智能 Agent 交互式替代机制**：Meta Hatch 未死板报错，而是自主将画面改写为合规方案（如“倒扣的空烟灰缸 + 胸片 + 窗光”），并在前端渲染了交互按钮 `<button>生成替代版：...</button>` 等待人工点击。在无人点击时，自动化程序会因超时或纯文本拒答而失败。
+- **解决对策（已落地双重防护）**：
+  1. **反代服务端自动嗅探并点击（Self-Healing Auto-Click）**：`muse2api` 的 `_wait_attachment` 轮询已内置交互建议检测器，0.5 秒内自动匹配并点击“生成替代版”交互按钮，自动延长超时并给予宽限期，无需人工介入即可顺利出图；
+  2. **上游分镜生成源头安全隐喻化**：[`src/prompt_builder.py`](file:///c:/develop/HowToLiveBetter-Motion/src/prompt_builder.py) 已内置安全隐喻转换铁律（严禁直接出现烟草/吸烟/开放性创伤词汇，统一自动改写为“倒扣的洁净空烟灰缸”、“无烟健康日历”、“温和医生问诊报告”等积极意象），从源头 100% 避免触发审查，提升生成速度。
+
+
+
+

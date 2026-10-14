@@ -87,8 +87,13 @@ def assemble_one(
 
     start_time = time.time()
     try:
-        scene_count = len(storyboard.get("scenes", []))
-        print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜，计算 Ken Burns 运镜与 0.5s 交叉淡入淡出...")
+        scenes_list = storyboard.get("scenes", [])
+        scene_count = len(scenes_list)
+        i2v_count = sum(1 for s in scenes_list if s.get("local_video_path") and os.path.exists(s.get("local_video_path")))
+        if i2v_count > 0:
+            print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜（含 {i2v_count} 幕 I2V 物理微动 + {scene_count - i2v_count} 幕 Ken Burns 运镜，执行 Freeze-and-Drift 缓动扩展与 0.5s 叠化）...")
+        else:
+            print(f"🎬 [步骤 1/3] 串联 {scene_count} 幕视觉分镜，计算 Ken Burns 运镜与 0.5s 交叉淡入淡出...")
         print("✍️ [步骤 2/3] 渲染黄金比例顶部标题胶囊、动态大字卡片与磨砂玻璃旁白字幕...")
         print("🎵 [步骤 3/3] 混入环境轻音乐 BGM 并使用 MoviePy 多核渲染导出 1080x1920 MP4...")
 

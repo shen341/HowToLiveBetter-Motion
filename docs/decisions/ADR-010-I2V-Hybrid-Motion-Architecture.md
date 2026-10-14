@@ -1,7 +1,7 @@
 # ADR-010: 图生视频 (Image-to-Video, I2V) 混合动态微动架构与演进路线
 
 ## 状态 (Status)
-**Proposed (规划拟定中 · 演进路线)**
+**Accepted (已实施 · 2026-10-12)**
 
 ## 日期 (Date)
 2026-10-12
@@ -95,3 +95,26 @@
 ### 潜在代价与挑战
 1. **网络与接口等待时间增加**：启用 I2V 的条目单条处理耗时将从 25s 增至约 50~90s；
 2. **依赖视频生成 API 对首帧图（Image Input）的支持质量**：需要底层模型具备高保真 Image-to-Video 驱动能力。
+
+---
+
+## 实施与工程落地成果 (Implementation & Verification)
+
+本架构决策于 2026-10-12 实施落地（**TASK-5.0**），关键组件如下：
+
+1. **分级分镜路由器 (`src/muse_client.py` - `is_i2v_scene`)**：
+   - 支持 `static`（纯原画运镜）、`i2v-tier1`（首幕钩子与第 5 幕行动示范）、`i2v-all`（全量 6 幕）；
+   - 大小写容错与场景数弹性适配（4 幕 / 6 幕）。
+2. **首帧驱动生成引擎 (`src/muse_client.py` - `generate_video`)**：
+   - 优先以 `image_path` 为首帧驱动 `muse-video` 物理微动生成，兼容网关异常与速率重试；
+   - 具备高效的模拟合成器（`_mock_video_generation`），以首帧为底图合成 24fps H.264 真实测试视频切片。
+3. **自适应尾帧缓动定格引擎 (`src/assembler.py` - `create_freeze_and_drift_clip`)**：
+   - 当 $T_{video} < T_{scene}$ 时，捕获视频末帧施加 1.2% 微幅呼吸推拉，通过 `concatenate_videoclips` 无缝延展补齐 TTS 动态时长；
+   - 当 $T_{video} \ge T_{scene}$ 时，精确截取子切片；
+   - 异常时自动平滑回退至静态原画 Ken Burns 运镜。
+4. **流水线调度集成**：
+   - `02_ai_generator.py`：新增 `--motion-mode [static|i2v-tier1|i2v-all]` 命令行参数，生成 `motion_{idx:02d}.mp4` 并记录至 `storyboard.json`；
+   - `03_video_assembler.py`：自动识别 I2V 分镜并执行 Freeze-and-Drift 混流；
+   - 环境变量与默认配置：`src/config.py` 与 `.env.example` 新增 `DEFAULT_MOTION_MODE`。
+5. **自动化测试守门 (`tests/test_i2v_motion.py`)**：
+   - 9 个专项测试用例 100% 覆盖路由器分类、Mock 视频生成、Freeze-and-Drift 延展截取、异常回退与图层合成。
