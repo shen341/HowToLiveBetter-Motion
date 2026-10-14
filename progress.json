@@ -1,12 +1,12 @@
 {
-  "export_time": "2026-10-14T08:50:55.651691",
+  "export_time": "2026-10-14T18:40:05.074090",
   "total_entries": 677,
   "status_summary": {
     "Approved": 24,
     "Completed": 4,
-    "Pending": 649,
-    "Script_Generated": 0,
-    "Media_Generated": 0,
+    "Media_Generated": 8,
+    "Pending": 640,
+    "Script_Generated": 1,
     "Video_Assembled": 0,
     "Needs_Revision": 0,
     "Failed": 0
@@ -522,9 +522,9 @@
       "item_index": 28,
       "title": "勃起功能出了问题，先去查心血管，别当成单纯的「那方面的事」",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732039"
+      "updated_at": "2026-10-14T12:40:59.496796"
     },
     {
       "id": "01_029",
@@ -533,9 +533,9 @@
       "item_index": 29,
       "title": "减重、戒烟、把血压血糖控住，勃起功能能跟着好转",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Script_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732092"
+      "updated_at": "2026-10-14T12:47:36.955418"
     },
     {
       "id": "01_030",
@@ -544,9 +544,9 @@
       "item_index": 30,
       "title": "性行为全程用安全套，不和别人共用针具",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732147"
+      "updated_at": "2026-10-14T14:53:07.127928"
     },
     {
       "id": "01_031",
@@ -555,9 +555,9 @@
       "item_index": 31,
       "title": "有过高危行为就去查一次艾滋病，疾控中心免费、结果保密",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732181"
+      "updated_at": "2026-10-14T14:35:15.701130"
     },
     {
       "id": "01_032",
@@ -566,9 +566,9 @@
       "item_index": 32,
       "title": "自杀念头一冒出来先告诉身边的一个人，把这几十分钟交出去",
       "evidence_grade": "B",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732236"
+      "updated_at": "2026-10-14T15:18:58.213434"
     },
     {
       "id": "01_033",
@@ -577,9 +577,9 @@
       "item_index": 33,
       "title": "别把「救回来」当成兜底：喝农药、吸煤气之后急诊能保住的是命，保不住肺和脑子",
       "evidence_grade": "B",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732273"
+      "updated_at": "2026-10-14T15:22:21.091524"
     },
     {
       "id": "01_034",
@@ -588,9 +588,9 @@
       "item_index": 34,
       "title": "别拿「躺几天就好」赌高处坠落：进了创伤 ICU 的人多数活下来，代价按年算",
       "evidence_grade": "B",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732312"
+      "updated_at": "2026-10-14T18:28:33.877642"
     },
     {
       "id": "01_035",
@@ -599,9 +599,9 @@
       "item_index": 35,
       "title": "别拿「少一个肾没什么」换钱：剩下那个要替两个干活，卖过肾的人事后 86% 说身体变差",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732352"
+      "updated_at": "2026-10-14T18:40:05.057920"
     },
     {
       "id": "01_036",
@@ -610,9 +610,9 @@
       "item_index": 36,
       "title": "不捡、不拆、不卖来路不明的金属件，带三叶草警示标志的离远点",
       "evidence_grade": "A",
-      "status": "Pending",
+      "status": "Media_Generated",
       "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732400"
+      "updated_at": "2026-10-14T15:06:39.148074"
     },
     {
       "id": "01_037",

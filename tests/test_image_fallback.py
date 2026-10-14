@@ -30,6 +30,7 @@ class TestImageFallback(unittest.TestCase):
             fallback_image_model="gemini-3.1-flash-image",
             fallback_text_model="gemini-3.8-flash-high",
             timeout=15.0,
+            ai_mode="cloud",
         )
         self.assertFalse(client.mock)
         self.assertIsNotNone(client.client)
@@ -48,6 +49,7 @@ class TestImageFallback(unittest.TestCase):
             fallback_image_model="gemini-3.1-flash-image",
             max_retries=1,
             retry_delay=0.01,
+            ai_mode="cloud",
         )
 
         # Primary client fails with 429 RateLimitError
@@ -102,6 +104,7 @@ class TestImageFallback(unittest.TestCase):
             fallback_image_model="gpt-image-2.5",
             max_retries=1,
             retry_delay=0.01,
+            ai_mode="cloud",
         )
 
         client.client.images.generate = MagicMock(side_effect=Exception("HTTP 429 Too Many Requests"))
@@ -135,6 +138,7 @@ class TestImageFallback(unittest.TestCase):
             fallback_image_model="gemini-3.1-flash-image",
             max_retries=1,
             retry_delay=0.01,
+            ai_mode="cloud",
         )
 
         client.client.images.generate = MagicMock(side_effect=Exception("Primary 502 Bad Gateway"))
@@ -153,6 +157,7 @@ class TestImageFallback(unittest.TestCase):
             fallback_text_model="gemini-3.8-flash-high",
             max_retries=1,
             retry_delay=0.01,
+            ai_mode="cloud",
         )
 
         client.client.chat.completions.create = MagicMock(side_effect=Exception("Muse-Spark connection timed out"))

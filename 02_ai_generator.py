@@ -25,6 +25,7 @@ except (AttributeError, io.UnsupportedOperation):
 print = functools.partial(print, flush=True)
 
 from src.config import (
+    AI_MODE,
     API_MAX_RETRIES,
     API_TIMEOUT_SECONDS,
     DEFAULT_MOTION_MODE,
@@ -305,6 +306,13 @@ def main():
         choices=["static", "i2v-tier1", "i2v-all"],
         help=f"I2V motion mode: 'static' (Ken Burns only), 'i2v-tier1' (Scenes 1 & 5 I2V micro-motion), 'i2v-all' (All 6 scenes I2V). Default: {DEFAULT_MOTION_MODE}"
     )
+    parser.add_argument(
+        "--ai-mode",
+        type=str,
+        default=AI_MODE,
+        choices=["hybrid", "local", "cloud"],
+        help=f"AI execution architecture: 'hybrid' (Gemini script + local ComfyUI), 'local' (Ollama + ComfyUI), 'cloud' (Muse/YourselfAI). Default: {AI_MODE}"
+    )
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="Path to SQLite database")
     parser.add_argument("--progress-path", default=DEFAULT_PROGRESS_PATH, help="Path to progress.json")
     args = parser.parse_args()
@@ -313,6 +321,7 @@ def main():
 
     # Initialize clients with rate limiting and exponential backoff
     client = MuseClient(
+        ai_mode=args.ai_mode,
         mock=args.mock,
         rate_limit_rpm=args.rpm_muse,
         max_retries=args.max_retries,
@@ -324,9 +333,26 @@ def main():
     )
 
     if client.mock:
-        print("💡 当前运行环境为 [离线/模拟测试模式] (未检测到有效 MUSE_API_KEY 或开启了 --mock 参数)")
+        print("💡 当前运行环境为 [离线/模拟测试模式] (未检测到有效 API 密钥或开启了 --mock 参数)")
+    elif client.ai_mode == "hybrid":
+        comfy_status = "🟢 已就绪" if client.local_image_client.is_available() else "⚪ 未启动 (自动云端容灾)"
+        print(f"🌟 当前运行架构为 [黄金混合模式] (AI_MODE=hybrid)")
+        print(f"   • 阶段一 爆款文案/分镜: 云端 {client.text_model} (极速 1.5s 绝无重复)")
+        print(f"   • 阶段二 语音解说: 保持免费极速 Edge-TTS ({tts_client.voice})")
+        print(f"   • 阶段三 本地艺术原画: ComfyUI [{comfy_status}] ({client.local_image_client.base_url})")
+    elif client.ai_mode == "local":
+        comfy_status = "🟢 已就绪" if client.local_image_client.is_available() else "⚪ 未启动 (自动云端容灾)"
+        print(f"🏠 当前运行架构为 [本地私有化 AI 模式] (AI_MODE=local)")
+        print(f"   • 阶段一 本地大模型: {client.base_url} [模型: {client.text_model}]")
+        print(f"   • 阶段二 语音解说: 保持免费极速 Edge-TTS ({tts_client.voice})")
+        print(f"   • 阶段三 本地艺术原画: ComfyUI [{comfy_status}] ({client.local_image_client.base_url})")
     else:
-        print(f"🔌 当前已连接 Muse AI API: {client.base_url} [速率限额: {args.rpm_muse} RPM | 单次超时: {args.timeout:.0f}s]")
+        print(f"☁️ 当前运行架构为 [云端 API 模式] (AI_MODE=cloud)")
+        print(f"   • 阶段一 云端大模型: {client.base_url} [模型: {client.text_model}] [速率限额: {args.rpm_muse} RPM]")
+
+        print(f"   • 阶段二 语音解说: 保持免费极速 Edge-TTS ({tts_client.voice})")
+        print(f"   • 阶段三 云端艺术原画: Muse-Image 1024x1792")
+
     if client.fallback_client:
         print(f"🛡️ 备选容灾路线已就绪: {client.fallback_base_url} [生图: {client.fallback_image_model} | 文本: {client.fallback_text_model}]")
     else:
@@ -334,6 +360,7 @@ def main():
     print(f"🎙️ 当前已就绪 TTS 语音服务: {tts_client.api_url} [音色: {tts_client.voice} | 限额: {args.rpm_tts} RPM]")
     print(f"🔄 瞬时异常容灾机制: 开启指数退避重试 (最大 {args.max_retries} 次重试, 2s -> 4s -> 8s)")
     print(f"🎨 画风配置策略: [{args.style}] ('auto' 为 AI 自主语义决策)")
+
     print(f"🎬 场景分镜规范: [{args.scenes} 幕] (黄金叙事脉冲节奏)")
     if args.motion_mode == "static":
         print(f"🎞️ 图生视频动效模式: [static] (纯Ken Burns镜头推拉，不调用I2V视频API，处理速度最快)")

@@ -43,9 +43,12 @@ class TestPlatformPresets(unittest.TestCase):
         fallback = get_platform_preset("unknown_platform_123")
         self.assertEqual(fallback["name"], PLATFORM_PRESETS["default"]["name"])
 
-        # None fallback
+        # None fallback (should match DEFAULT_PLATFORM_PRESET configured in environment)
+        from src.config import DEFAULT_PLATFORM_PRESET
+        expected_default_preset = PLATFORM_PRESETS.get((DEFAULT_PLATFORM_PRESET or "default").lower(), PLATFORM_PRESETS["default"])
         fallback_none = get_platform_preset(None)
-        self.assertEqual(fallback_none["name"], PLATFORM_PRESETS["default"]["name"])
+        self.assertEqual(fallback_none["name"], expected_default_preset["name"])
+
 
     def test_list_platform_presets(self):
         all_presets = list_platform_presets()

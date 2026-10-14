@@ -13,10 +13,17 @@ from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
 
 from src.config import (
+    ACTIVE_TEXT_API_KEY,
+    ACTIVE_TEXT_BASE_URL,
+    ACTIVE_TEXT_MODEL,
+    AI_MODE,
     API_MAX_RETRIES,
     API_RETRY_DELAY,
     API_TIMEOUT_SECONDS,
     DEFAULT_MOTION_MODE,
+    LOCAL_LLM_API_KEY,
+    LOCAL_LLM_BASE_URL,
+    LOCAL_LLM_MODEL,
     MODEL_IMAGE,
     MODEL_TEXT,
     MODEL_VIDEO,
@@ -28,6 +35,7 @@ from src.config import (
     YOURSELFAI_IMAGE_MODEL,
     YOURSELFAI_MODEL,
 )
+from src.local_image_client import LocalImageClient
 from src.prompt_builder import (
     STYLE_RECIPES,
     build_system_prompt,
@@ -68,12 +76,14 @@ def is_i2v_scene(scene_index: int, total_scenes: int = 6, motion_mode: str = "st
 
 
 class MuseClient:
-    """Client for Muse AI API supporting script, image, and video generation with rate limiting and exponential backoff."""
+    """Client for AI API supporting script, image, and video generation with local/cloud modes, rate limiting, and exponential backoff."""
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
+        text_model: Optional[str] = None,
+        ai_mode: Optional[str] = None,
         mock: bool = False,
         rate_limit_rpm: Optional[int] = None,
         max_retries: Optional[int] = None,
@@ -84,8 +94,23 @@ class MuseClient:
         fallback_image_model: Optional[str] = None,
         fallback_text_model: Optional[str] = None,
     ):
-        self.api_key = api_key or MUSE_API_KEY or os.getenv("MUSE_API_KEY", "")
-        self.base_url = base_url or MUSE_BASE_URL or os.getenv("MUSE_BASE_URL", "https://yourselfai.org/muse/v1")
+        self.ai_mode = (ai_mode or AI_MODE or "cloud").lower().strip()
+
+        # Decide primary text API configuration based on ai_mode
+        if self.ai_mode == "local":
+            self.api_key = api_key or LOCAL_LLM_API_KEY or "ollama"
+            self.base_url = base_url or LOCAL_LLM_BASE_URL or "http://localhost:11434/v1"
+            self.text_model = text_model or LOCAL_LLM_MODEL or "qwen2.5vl:7b"
+        elif self.ai_mode == "hybrid":
+            self.api_key = api_key or YOURSELFAI_API_KEY or os.getenv("YOURSELFAI_API_KEY", "")
+            self.base_url = base_url or YOURSELFAI_BASE_URL or os.getenv("YOURSELFAI_BASE_URL", "https://yourselfai.org/v1")
+            self.text_model = text_model or YOURSELFAI_MODEL or "gemini-3.8-flash-high"
+        else:
+            self.api_key = api_key or MUSE_API_KEY or os.getenv("MUSE_API_KEY", "")
+            self.base_url = base_url or MUSE_BASE_URL or os.getenv("MUSE_BASE_URL", "https://yourselfai.org/muse/v1")
+            self.text_model = text_model or MODEL_TEXT or "muse-spark"
+
+
         self.mock = mock or not bool(self.api_key)
         self.rate_limit_rpm = rate_limit_rpm if rate_limit_rpm is not None else RATE_LIMIT_MUSE_RPM
         self.max_retries = max_retries if max_retries is not None else API_MAX_RETRIES
@@ -97,6 +122,9 @@ class MuseClient:
         self.fallback_base_url = fallback_base_url or YOURSELFAI_BASE_URL or os.getenv("YOURSELFAI_BASE_URL", "https://yourselfai.org/v1")
         self.fallback_image_model = fallback_image_model or YOURSELFAI_IMAGE_MODEL or os.getenv("YOURSELFAI_IMAGE_MODEL", "gemini-3.1-flash-image")
         self.fallback_text_model = fallback_text_model or YOURSELFAI_MODEL or os.getenv("YOURSELFAI_MODEL", "gemini-3.8-flash-high")
+
+        # Phase 3: Local Image generation client (ComfyUI / LoRA)
+        self.local_image_client = LocalImageClient(mock=self.mock)
 
         self.limiter = TokenBucketLimiter(rate_per_minute=self.rate_limit_rpm)
 
@@ -119,7 +147,7 @@ class MuseClient:
             self.fallback_client = None
 
     def generate_script(self, entry: Dict[str, Any], style_mode: str = "auto", scene_count: int = 6) -> Dict[str, Any]:
-        """Generate a structured storyboard JSON using muse-spark (or fallback to YourselfAI / rule-based).
+        """Generate a structured storyboard JSON using local Ollama or muse-spark (with fallback to YourselfAI / rule-based).
         
         Args:
             entry: Entry data dictionary.
@@ -132,10 +160,18 @@ class MuseClient:
         system_prompt = build_system_prompt(scene_count=scene_count)
         user_prompt = build_user_prompt(entry, style_mode=style_mode, scene_count=scene_count)
 
-        # 1. 主路线: Muse-Spark (启用 stream=True 保活防超时)
+        # 1. 主路线: Local-Ollama (本地私有化), YourselfAI-Gemini (混合模式), 或 Muse-Spark (云端)
+        if self.ai_mode == "local":
+            service_label = f"Local-Ollama ({self.text_model})"
+        elif self.ai_mode == "hybrid":
+            service_label = f"YourselfAI-Gemini ({self.text_model})"
+        else:
+            service_label = f"Muse-Spark ({self.text_model})"
+
+
         def _do_generate_script():
             stream_resp = self.client.chat.completions.create(
-                model=MODEL_TEXT,
+                model=self.text_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -154,12 +190,13 @@ class MuseClient:
                 _do_generate_script,
                 max_retries=min(self.max_retries, 2),
                 initial_delay=self.retry_delay,
-                service_name="Muse-Spark",
-                limiter=self.limiter,
+                service_name=service_label,
+                limiter=self.limiter if self.ai_mode != "local" else None,
             )
             return self._clean_and_parse_json(raw_content, entry, style_mode=style_mode, scene_count=scene_count)
         except Exception as e:
-            print(f"⚠️ [主线路 Muse-Spark] 遇到限速/拥堵或调用异常: {e}.")
+            print(f"⚠️ [主线路 {service_label}] 遇到限速/拥堵或调用异常: {e}.")
+
 
         # 2. 备选路线: YourselfAI (OpenAI 兼容协议)
         if self.fallback_client:
@@ -346,6 +383,27 @@ class MuseClient:
         if self.mock:
             return self._mock_image_generation(prompt, output_path, style_id)
 
+        # 0. 本地化/混合模式: 阶段三 (本地 ComfyUI + 画风 LoRA 艺术原画)
+        if self.ai_mode in ("local", "hybrid"):
+            if self.local_image_client.is_available():
+
+                print(f"      🎨 [阶段三: 本地艺术原画] 正在通过 ComfyUI (RTX 4070) 绘制 1024x1792 原画 (画风: {style_id})...")
+                try:
+                    def _do_local_image():
+                        return self.local_image_client.generate_image(prompt, output_path, style_id=style_id)
+                    retry_with_backoff(
+                        _do_local_image,
+                        max_retries=1,
+                        initial_delay=self.retry_delay,
+                        service_name="Local-ComfyUI",
+                        limiter=None,
+                    )
+                    return output_path
+                except Exception as e_local:
+                    print(f"      ⚠️ [本地 ComfyUI] 生成异常 ({e_local})，自动降级至云端备选生图路线...")
+            else:
+                print(f"      ℹ️ [本地 ComfyUI] 服务未启动 ({self.local_image_client.base_url})，自动平滑切换至云端备选路线...")
+
         # 1. 尝试主线路: Muse-Image
         try:
             def _do_primary_image():
@@ -355,6 +413,7 @@ class MuseClient:
                     size="1024x1792"
                 )
                 return self._save_image_from_response(response, output_path)
+
 
             retry_with_backoff(
                 _do_primary_image,

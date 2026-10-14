@@ -125,9 +125,12 @@ class Copywriter:
         else:
             system_prompt, user_prompt = build_copywriting_prompt(entry, storyboard)
 
+            model_to_use = getattr(self.client, "text_model", MODEL_TEXT)
+            service_label = f"Local-Ollama-Copywriter ({model_to_use})" if getattr(self.client, "ai_mode", "cloud") == "local" else f"Muse-Spark-Copywriter ({model_to_use})"
+
             def _do_generate():
                 return self.client.client.chat.completions.create(
-                    model=MODEL_TEXT,
+                    model=model_to_use,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
@@ -140,9 +143,10 @@ class Copywriter:
                     _do_generate,
                     max_retries=self.client.max_retries,
                     initial_delay=self.client.retry_delay,
-                    service_name="Muse-Spark-Copywriter",
-                    limiter=self.client.limiter,
+                    service_name=service_label,
+                    limiter=self.client.limiter if getattr(self.client, "ai_mode", "cloud") != "local" else None,
                 )
+
                 raw_content = response.choices[0].message.content
                 copy_data = self._clean_and_parse_json(raw_content, entry, storyboard)
             except Exception as e:
