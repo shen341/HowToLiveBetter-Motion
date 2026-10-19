@@ -42,6 +42,20 @@ from src.db import (
     list_entries,
     update_status,
 )
+import numpy as np
+
+try:
+    import cv2
+    from src.whiteboard.stream_renderer import StreamWhiteboardRenderer, StreamWhiteboardConfig
+    from src.whiteboard.annotation_planner import AnnotationPlanner
+    HAS_OPENCV_STREAM = True
+except ImportError:
+    cv2 = None
+    StreamWhiteboardRenderer = None
+    StreamWhiteboardConfig = None
+    AnnotationPlanner = None
+    HAS_OPENCV_STREAM = False
+
 from src.cover_generator import CoverGenerator
 from src.muse_client import MuseClient, is_i2v_scene, is_whiteboard_scene
 from src.srt_generator import SRTGenerator
@@ -191,27 +205,62 @@ def process_entry(
             if is_whiteboard_scene(idx, total_scenes, motion_mode):
                 video_name = f"motion_{idx:02d}.mp4"
                 video_path = os.path.join(asset_dir, video_name)
+                ann_path = os.path.join(asset_dir, f"scene_{idx:02d}.annotation.json")
                 if not os.path.exists(video_path) or force:
                     t_vid = time.time()
-                    if wb_layout_info is None:
-                        layout_eng = WhiteboardLayoutEngine()
-                        _, base_canvas, strokes_list = layout_eng.generate_scene_layout(scene, scene_index=idx)
-                    else:
-                        _, base_canvas, strokes_list = wb_layout_info
+                    # Priority 1: Semantic Stream Whiteboard Drawing on AI Raster Image
+                    if HAS_OPENCV_STREAM and scene_img_path and os.path.exists(scene_img_path):
+                        print(f"      ✍️ [流式手绘白板] 正在使用连续笔迹（Ink->Color）合成 1080x1920 切片 (分镜 {scene_dur:.1f}s)...")
+                        planner = AnnotationPlanner(canvas_width=1080, canvas_height=1920)
+                        subs = [narration_text] if narration_text else [entry.get("title", "核心生活常识")]
+                        ann = planner.plan_scene_annotation(
+                            scene_id=f"scene_{idx:02d}",
+                            image=scene_img_path,
+                            duration_sec=scene_dur,
+                            subtitles=subs,
+                            story_basis=narration_text,
+                        )
+                        planner.save_annotation(ann, ann_path)
 
-                    write_dur = min(max(scene_dur * 0.75, 2.5), 4.5)
-                    print(f"      ✍️ [手绘白板] 正在使用纯金属触控笔合成 1080x1920 30fps 流畅写画切片 (书写 {write_dur:.1f}s / 分镜 {scene_dur:.1f}s)...")
-                    compositor = HandCompositor()
-                    compositor.render_drawing_video(
-                        base_canvas=base_canvas,
-                        strokes=strokes_list,
-                        output_mp4_path=video_path,
-                        duration_sec=write_dur,
-                        fps=30
-                    )
+                        cfg = StreamWhiteboardConfig(
+                            fps=30,
+                            gaze_seconds=0.5,
+                            canvas_hex="#FAF8F5",
+                            ink_threshold=150,
+                            target_hand_height=520,
+                        )
+                        raw = np.fromfile(scene_img_path, dtype=np.uint8)
+                        img_bgr = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+                        renderer = StreamWhiteboardRenderer(
+                            image_bgr=img_bgr,
+                            annotation=ann,
+                            config=cfg,
+                            hand_path="assets/whiteboard/drawing-hand.png",
+                            target_size=(1080, 1920),
+                        )
+                        renderer.render_to_video(video_path)
+                    else:
+                        # Priority 2: Procedural SVG & HandCompositor Fallback (e.g. mock mode without raster image)
+                        if wb_layout_info is None:
+                            layout_eng = WhiteboardLayoutEngine()
+                            _, base_canvas, strokes_list = layout_eng.generate_scene_layout(scene, scene_index=idx)
+                        else:
+                            _, base_canvas, strokes_list = wb_layout_info
+
+                        write_dur = min(max(scene_dur * 0.75, 2.5), 4.5)
+                        print(f"      ✍️ [手绘白板-矢量模式] 正在使用纯金属触控笔合成 1080x1920 30fps 流畅写画切片 (书写 {write_dur:.1f}s / 分镜 {scene_dur:.1f}s)...")
+                        compositor = HandCompositor()
+                        compositor.render_drawing_video(
+                            base_canvas=base_canvas,
+                            strokes=strokes_list,
+                            output_mp4_path=video_path,
+                            duration_sec=write_dur,
+                            fps=30
+                        )
+
                     dur_vid = time.time() - t_vid
                     v_size_kb = os.path.getsize(video_path) / 1024 if os.path.exists(video_path) else 0
-                    print(f"      ✅ 手绘白板流畅切片就绪 (耗时 {dur_vid:.1f}s, 大小 {v_size_kb:.0f}KB) -> {video_name}")
+                    print(f"      ✅ 手绘白板切片就绪 (耗时 {dur_vid:.1f}s, 大小 {v_size_kb:.0f}KB) -> {video_name}")
                     scene["local_video_path"] = video_path
                     scene["motion_type_mode"] = "whiteboard"
                 else:
@@ -317,7 +366,7 @@ def main():
         "--style",
         type=str,
         default="auto",
-        help="Visual art style mode: 'auto' (AI autonomous choice, default), 'chapter' (chapter rule-based), or specific ID (25_ghibli, y1_kurzgesagt, y2_vox, 13_pop, 24_hopper, 17_ink, 14_pixel)"
+        help="Visual art style mode: 'auto' (AI autonomous choice, default), 'chapter' (chapter rule-based), or specific ID (25_ghibli, y1_kurzgesagt, w1_whiteboard, 13_pop, 24_hopper, 17_ink, 14_pixel)"
     )
     parser.add_argument(
         "--scenes",

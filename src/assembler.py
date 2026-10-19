@@ -414,7 +414,7 @@ class VideoAssembler:
 
         # Case A: Video duration satisfies or exceeds target duration
         if v_dur >= target_duration - 0.05:
-            return vclip.subclipped(0, target_duration)
+            return vclip.subclipped(0, min(v_dur, target_duration))
 
         # Case B: Video duration is shorter than target duration (Freeze-and-Drift)
         delta_t = round(target_duration - v_dur, 3)

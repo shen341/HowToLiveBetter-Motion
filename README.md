@@ -210,8 +210,8 @@ python 02_ai_generator.py --entry-id 01_001 --style chapter
 # 3. 指定分镜幕数：支持 4/6/8 幕分镜（默认 6 幕黄金节奏）
 python 02_ai_generator.py --entry-id 01_001 --scenes 6
 
-# 4. 强制指定画风模式：手动测试对比特定艺术风格 (如 y2_vox, y1_kurzgesagt, 13_pop, 24_hopper, 25_ghibli, 17_ink, 14_pixel)
-python 02_ai_generator.py --entry-id 01_001 --style y2_vox --force
+# 4. 强制指定画风模式：手动测试对比特定艺术风格 (如 w1_whiteboard, y1_kurzgesagt, 13_pop, 24_hopper, 25_ghibli, 17_ink, 14_pixel)
+python 02_ai_generator.py --entry-id 01_001 --style w1_whiteboard --force
 
 # 5. 批量处理前 5 个待处理条目 (全自动智能选风与素材生成)
 python 02_ai_generator.py --limit 5
@@ -307,7 +307,7 @@ streamlit run 04_review_dashboard.py
 | 风格 ID | 风格名称 | 适用领域 | 美学特征 |
 |---|---|---|---|
 | `25_ghibli` | 吉卜力暖调手绘风 | 意外预防、家庭安全、身体健康 | 温暖阳光漫射、质朴生活细节、温润治愈手绘水彩 |
-| `y2_vox` | Vox 调查剪报风 | 法律红线、金融防骗、合同维权 | 真实纸纹拼贴、红线指引、高对比度黑白档案感 |
+| `w1_whiteboard` | 极简手绘白板风 | 法律避坑、规则拆解、硬核科普、决策权衡 | 暖米黄纸底、呼吸留白、极简黑线素描、克制强调色、思维导图感 |
 | `y1_kurzgesagt` | Kurzgesagt 扁平科普 | 精力管理、时间分配、科学机制 | 鲜明纯色平涂色块、几何轮廓、无复杂蓝紫渐变 |
 | `13_pop` | 利希滕斯坦波普风 | 反直觉痛点、消费陷阱、人际冲突 | 本戴点网格纹理、粗重黑色描边、经典美漫原色冲击 |
 | `24_hopper` | 霍珀现实主义风 | 情绪压力、重大变故、人生哲学 | 斜射几何光块、市井现实主义、克制沉静构图 |

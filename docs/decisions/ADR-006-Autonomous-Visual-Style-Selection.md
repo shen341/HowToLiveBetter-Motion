@@ -21,7 +21,7 @@
 ### 1. 扩充开源 `huashu-art-motion` 风格卡配方库
 在 `src/prompt_builder.py` 中规范定义 7 种高表现力艺术风格卡：
 - `25_ghibli`：吉卜力暖调手绘风（温馨治愈守护）
-- `y2_vox`：Vox 调查剪报拼贴风（档案证据与法律红线警示）
+- `w1_whiteboard`：极简手绘白板风（思维导图、避坑防骗与理性决策）
 - `y1_kurzgesagt`：Kurzgesagt 扁平科普风（纯净几何与生理机制拆解）
 - `13_pop`：利希滕斯坦波普艺术风（本戴点美漫与强烈反常识痛点）
 - `24_hopper`：霍珀美国现实主义风（强烈斜射光影与都市沉思）
@@ -37,7 +37,7 @@
 在 `02_ai_generator.py` 中引入命令行参数 `--style`：
 - **`--style auto`（默认）**：AI 语义理解自主决策。
 - **`--style chapter`**：遵循所属章节大类分类映射，保证同一章节系列的视觉品牌一致。
-- **`--style <id>`**：如 `--style y2_vox`，人工强制指定，方便针对同一篇文案进行多风格 A/B 测试。
+- **`--style <id>`**：如 `--style w1_whiteboard`，人工强制指定，方便针对同一篇文案进行多风格 A/B 测试。
 
 ## 备选方案评估 (Alternatives Considered)
 

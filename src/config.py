@@ -79,6 +79,7 @@ DEFAULT_PLATFORM_PRESET = os.getenv("PLATFORM_PRESET", "default")   # default / 
 
 # Motion Mode Configuration (TASK-5.0: I2V Hybrid Motion & TASK-5.4: Whiteboard Smooth Motion)
 DEFAULT_MOTION_MODE = os.getenv("MOTION_MODE", "static")  # static / i2v-tier1 / i2v-all / whiteboard
+WHITEBOARD_PEN_BRAND_TEXT = os.getenv("WHITEBOARD_PEN_BRAND_TEXT", "小生杂货铺")
 
 OUTPUT_RAW_ASSETS_DIR = os.path.join(ROOT_DIR, "output", "raw_assets")
 OUTPUT_FINAL_VIDEOS_DIR = os.path.join(ROOT_DIR, "output", "final_videos")

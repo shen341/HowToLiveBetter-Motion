@@ -713,8 +713,8 @@ class MuseClient:
         else:
             # Autonomous AI heuristic based on chapter & topic
             if chapter_index in (5, 8, 9, 11, 12, 15):
-                style_id = "y2_vox"
-                style_reason = "AI 识别到条目涉及经济规则、法律红线与防骗，选用 Vox 调查剪报风强化档案警示感"
+                style_id = "w1_whiteboard"
+                style_reason = "AI 识别到条目涉及经济规则、法律红线与防骗，选用极简手绘白板风以清晰条理与克制留白呈现核心避坑逻辑"
             elif chapter_index in (3, 4, 6, 23):
                 style_id = "y1_kurzgesagt"
                 style_reason = "AI 识别到条目涉及精力机制与科学拆解，选用 Kurzgesagt 扁平科普矢量风增强明晰度"

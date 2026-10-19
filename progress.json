@@ -1,12 +1,12 @@
 {
-  "export_time": "2026-10-15T00:06:23.862966",
+  "export_time": "2026-10-19T14:56:19.033547",
   "total_entries": 677,
   "status_summary": {
     "Approved": 23,
-    "Completed": 6,
-    "Media_Generated": 9,
-    "Pending": 638,
-    "Script_Generated": 1,
+    "Completed": 11,
+    "Media_Generated": 4,
+    "Pending": 637,
+    "Script_Generated": 2,
     "Video_Assembled": 0,
     "Needs_Revision": 0,
     "Failed": 0
@@ -16,7 +16,7 @@
       "chapter_index": 1,
       "chapter_title": "不要早死",
       "total_items": 43,
-      "completed_items": 28
+      "completed_items": 33
     },
     {
       "chapter_index": 2,
@@ -227,7 +227,7 @@
       "evidence_grade": "A",
       "status": "Completed",
       "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_001_不要早死之系安全带，前排后排都系.mp4",
-      "updated_at": "2026-10-14T22:24:49.202252"
+      "updated_at": "2026-10-19T13:48:34.072546"
     },
     {
       "id": "01_002",
@@ -522,9 +522,9 @@
       "item_index": 28,
       "title": "勃起功能出了问题，先去查心血管，别当成单纯的「那方面的事」",
       "evidence_grade": "A",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-14T12:40:59.496796"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_028_不要早死之勃起功能出了问题，先去查心血管，别当成单纯的「那方面的事」.mp4",
+      "updated_at": "2026-10-16T08:35:14.318734"
     },
     {
       "id": "01_029",
@@ -544,9 +544,9 @@
       "item_index": 30,
       "title": "性行为全程用安全套，不和别人共用针具",
       "evidence_grade": "A",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-14T14:53:07.127928"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_030_不要早死之性行为全程用安全套，不和别人共用针具.mp4",
+      "updated_at": "2026-10-16T08:40:12.683493"
     },
     {
       "id": "01_031",
@@ -555,9 +555,9 @@
       "item_index": 31,
       "title": "有过高危行为就去查一次艾滋病，疾控中心免费、结果保密",
       "evidence_grade": "A",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-14T14:35:15.701130"
+      "status": "Script_Generated",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_031_不要早死之有过高危行为就去查一次艾滋病，疾控中心免费、结果保密.mp4",
+      "updated_at": "2026-10-19T10:06:43.311190"
     },
     {
       "id": "01_032",
@@ -566,9 +566,9 @@
       "item_index": 32,
       "title": "自杀念头一冒出来先告诉身边的一个人，把这几十分钟交出去",
       "evidence_grade": "B",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-14T15:18:58.213434"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_032_不要早死之自杀念头一冒出来先告诉身边的一个人，把这几十分钟交出去.mp4",
+      "updated_at": "2026-10-16T08:53:46.984249"
     },
     {
       "id": "01_033",
@@ -577,9 +577,9 @@
       "item_index": 33,
       "title": "别把「救回来」当成兜底：喝农药、吸煤气之后急诊能保住的是命，保不住肺和脑子",
       "evidence_grade": "B",
-      "status": "Media_Generated",
-      "final_video_path": null,
-      "updated_at": "2026-10-14T23:48:14.447439"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_033_不要早死之别把「救回来」当成兜底：喝农药、吸煤气之后急诊能保住的是命，保不住肺和脑子.mp4",
+      "updated_at": "2026-10-16T09:00:22.665141"
     },
     {
       "id": "01_034",
@@ -643,9 +643,9 @@
       "item_index": 39,
       "title": "65 岁以上的女性去做一次双能 X 线骨密度检查，绝经后有骨质疏松危险因素的不用等到 65 岁",
       "evidence_grade": "A",
-      "status": "Pending",
-      "final_video_path": null,
-      "updated_at": "2026-10-11T11:43:35.732544"
+      "status": "Completed",
+      "final_video_path": "C:\\develop\\HowToLiveBetter-Motion\\output\\final_videos\\01_039_不要早死之65_岁以上的女性去做一次双能_X_线骨密度检查，绝经后有骨质疏松危险因素的不用等到_65_岁.mp4",
+      "updated_at": "2026-10-19T14:56:18.998174"
     },
     {
       "id": "01_040",

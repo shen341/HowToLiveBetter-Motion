@@ -18,13 +18,6 @@ STYLE_RECIPES = {
         "keywords": "Kurzgesagt art style, clean flat vector illustration, rich vibrant solid colors, whimsical scientific infographic, sharp geometric silhouettes, immaculate lighting",
         "negative": "photorealistic, noisy gradients, 3d render, dark neon cyber, blurry, deformed, watermark"
     },
-    "y2_vox": {
-        "name": "Vox 调查剪报拼贴风",
-        "description": "真实复古纸纹、剪报拼贴、红线引导、档案卷宗感、高对比黑白配高饱和警示色",
-        "suitable_for": "法律红线、金融防骗、合同维权、安全隐患调查、反直觉反诈调查类条目",
-        "keywords": "Vox-style investigative collage, torn aged paper textures, archival document aesthetic, high contrast red accents, halftone printing dots, sharp journalistic details",
-        "negative": "cartoonish, cute anime, pastel tones, 3d glossy, abstract sci-fi, blurry, watermark"
-    },
     "13_pop": {
         "name": "利希滕斯坦波普艺术风",
         "description": "本戴点网格纹理、粗重黑色描边、经典美漫原色冲击、复古摩登张力",
@@ -82,9 +75,9 @@ def recommend_style_for_entry(chapter_index: int) -> str:
     # 01(不要早死), 02(不要慢慢死), 13(紧急情况), 24(看病) -> Ghibli (温润生活守护)
     if chapter_index in (1, 2, 13, 24, 27, 34):
         return "25_ghibli"
-    # 05(不要浪费钱), 08(别把自己搭进去), 09(法律红线), 11(技术红线), 12(创业), 15(买房租房) -> Vox (硬核调查与规则)
+    # 05(不要浪费钱), 08(别把自己搭进去), 09(法律红线), 11(技术红线), 12(创业), 15(买房租房) -> Whiteboard (极简手绘白板风/理性避坑与条理)
     elif chapter_index in (5, 8, 9, 11, 12, 15, 19):
-        return "y2_vox"
+        return "w1_whiteboard"
     # 03(精力), 04(时间), 06(反面清单), 23(学技能) -> Kurzgesagt (清晰机制拆解)
     elif chapter_index in (3, 4, 6, 23, 26):
         return "y1_kurzgesagt"

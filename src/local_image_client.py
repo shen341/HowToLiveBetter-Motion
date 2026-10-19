@@ -35,12 +35,6 @@ STYLE_LORA_PRESETS: Dict[str, Dict[str, Any]] = {
         "trigger": "Kurzgesagt flat vector art, clean sharp geometric silhouettes, immaculate lighting",
         "default_negative": "photorealistic, noisy gradients, 3d render, blurry, watermark"
     },
-    "y2_vox": {
-        "lora_name": "vox_motion_collage.safetensors",
-        "strength": 0.80,
-        "trigger": "Vox-style investigative collage, vintage paper textures, halftone dot pattern, red accents",
-        "default_negative": "cute cartoon, 3d glossy, abstract sci-fi, blurry, watermark"
-    },
     "13_pop": {
         "lora_name": "roy_lichtenstein_pop.safetensors",
         "strength": 0.85,

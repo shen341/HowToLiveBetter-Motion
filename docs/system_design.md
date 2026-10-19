@@ -219,7 +219,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_chapter ON entries(chapter_index);
 | 适用条目类型 / 语义情感 | 风格 ID | 风格名称 | 视觉特征与色板 | Prompt 核心基石修饰语 |
 |---|---|---|---|---|
 | **大众生活 / 身心健康 / 守护** | `25_ghibli` | 吉卜力暖色手绘风 | 水彩洗染、自然阳光漫射、生活细节丰富、温润治愈 | `Studio Ghibli aesthetic, hand-drawn anime background, warm natural sunlight, gouache wash texture, meticulous everyday details, peaceful and clean` |
-| **法律红线 / 诈骗档案 / 维权** | `y2_vox` | Vox 剪报调查风 | 真实纸纹、红线连接、牛皮纸、档案感、高对比黑白红 | `Vox-style investigative collage, torn aged paper, archival document aesthetic, high contrast red accents, halftone dots, sharp details` |
+| **法律红线 / 规则避坑 / 维权权衡** | `w1_whiteboard` | 极简手绘白板风 | 暖调米白宣纸、大量呼吸留白、黑线素描、思维导图感 | `zen minimalist whiteboard doodle art, clean ivory off-white paper texture, ample negative space, isolated single iconic subject, crisp black outline sketch` |
 | **科学常识 / 机理数据 / 精力** | `y1_kurzgesagt` | Kurzgesagt 扁平科普 | 鲜艳纯净色块、几何轮廓分明、趣味科学图解、高信息密度 | `Kurzgesagt art style, clean flat vector illustration, rich vibrant solid colors, whimsical scientific infographic, sharp geometric silhouettes` |
 | **反直觉痛点 / 消费陷阱 / 警示** | `13_pop` | 利希滕斯坦波普风 | 本戴点网格纹理、粗黑描边、经典美漫原色冲击、戏剧性张力 | `Roy Lichtenstein pop art, Ben-Day dots texture, bold black outlines, vintage comic book aesthetic, vibrant primary colors, graphic punchy composition` |
 | **都市压力 / 独处心理 / 沉思** | `24_hopper` | 霍珀美国现实主义风 | 强烈斜射几何光块、孤独宁静感、深思熟虑的构图与空间 | `Edward Hopper American realism style, dramatic geometric sunlight shadows, contemplative atmosphere, clean architectural planes` |
@@ -229,7 +229,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_chapter ON entries(chapter_index);
 #### 三种运行控制模式：
 1. **`--style auto`（默认推荐）**：全权交由大模型（`muse-spark`）通读条目的「核心要点」、「情绪内核」与「受众心理冲击」，从上述风格库中自主分析并决策最契合的画风，并在 `storyboard.json` 中输出选风理由 `art_style_reason`。
 2. **`--style chapter`**：遵循章节大类别统一推荐，保持系列视频的视觉品牌一致性。
-3. **`--style <id>`（人工强制）**：如 `--style y2_vox` 或 `--style 13_pop`，方便对同篇文案进行不同视觉风格的 A/B 效果对比。
+3. **`--style <id>`（人工强制）**：如 `--style w1_whiteboard` 或 `--style 13_pop`，方便对同篇文案进行不同视觉风格的 A/B 效果对比。
 
 ### 3.3 Prompt 转化工程模板
 

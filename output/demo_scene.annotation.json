@@ -1,0 +1,51 @@
+{
+  "sceneId": "demo_scene",
+  "canvas": {
+    "width": 1080,
+    "height": 1920
+  },
+  "storyBasis": "安全生活指南之安全带防护",
+  "sceneDurationMs": 4000,
+  "elements": [
+    {
+      "id": "elem_01",
+      "label": "分镜核心主体 1",
+      "sequence": 1,
+      "narrativeRole": "第 1 步递进式叙事表达",
+      "subtitle": "第一步：上车无论前排后排，第一件事扣紧安全带",
+      "region": {
+        "x": 144,
+        "y": 381,
+        "width": 793,
+        "height": 539
+      },
+      "reveal": {
+        "direction": "top_to_bottom",
+        "startMs": 100,
+        "durationMs": 1600,
+        "maskPaddingPx": 16,
+        "protectedRegions": []
+      }
+    },
+    {
+      "id": "elem_02",
+      "label": "分镜核心主体 2",
+      "sequence": 2,
+      "narrativeRole": "第 2 步递进式叙事表达",
+      "subtitle": "第二步：经统计后排不系安全带，致命风险飙升60%",
+      "region": {
+        "x": 283,
+        "y": 1023,
+        "width": 515,
+        "height": 515
+      },
+      "reveal": {
+        "direction": "top_to_bottom",
+        "startMs": 1850,
+        "durationMs": 1600,
+        "maskPaddingPx": 16,
+        "protectedRegions": []
+      }
+    }
+  ]
+}
